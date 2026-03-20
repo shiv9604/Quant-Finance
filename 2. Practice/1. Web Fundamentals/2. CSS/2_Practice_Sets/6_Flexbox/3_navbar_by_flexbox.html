@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>navabr_using_flexbox</title>
+
+    <style>
+        *{
+            margin: 0;
+            padding: 0;
+        }
+        .container{
+            display: flex;
+            background-color:lavender;
+            color:black;
+            height:10vh;
+            width:100vw;
+            align-items:center;
+            /* justify-content:center; */
+            justify-content: center;
+            justify-content: space-between;
+        }
+        .company{
+            justify-content:space-between;
+            font-size: 2vh;
+            margin: 10vh;
+        }
+        .items{
+            display: flex;
+            justify-content: space-between;
+            /* align-content: space-between; */
+            
+        }
+        
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+        <div class="company">SK_Devlopement</div>
+        <div class="items">
+                <div class="Home">Home</div>
+                <div class="About">About</div>
+                <div class="Services">Services</div>
+                <div class="Contact">Contact</div>
+            </div>
+        </div>
+    </header>
+</body>
+</html> 

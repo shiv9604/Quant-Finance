@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Layout_By_Flexbox</title>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+        }
+
+        header {
+            height: 10vh;
+            width: 100vw;
+            background-color: mistyrose;
+            color: black;
+        }
+
+        li {
+            list-style: none;
+            padding: 3.5vh 1vw;
+            display: inline-block;
+            font-size: 1vw;
+
+        }
+
+        .company_name {
+            font-size: 2.5vh;
+            padding-left: 2.5vw;
+            padding-right: 64vw;
+
+        }
+
+        .container {
+            display: flex;
+        }
+
+        .left {
+            width: 50vw;
+            height: 90vh;
+            background-color: rgba(100, 148, 237, 0.678);
+
+
+        }
+
+        .right {
+            width: 50vw;
+            height: 90vh;
+            background-color: lavender;
+            justify-content: space-between;
+
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <nav>
+            <ul>
+                <li class=company_name>Beauty Stop</li>
+                <li>Home</li>
+                <li>About us</li>
+                <li>Our services</li>
+                <li>Contact us</li>
+            </ul>
+        </nav>
+
+    </header>
+    <main>
+        <div class="container">
+            <div class="left">
+                Lorem ipsum dolor sit, amet consectetur adipisicing elit. Fugit, quis! Corporis modi similique dicta
+                obcaecati, tenetur explicabo placeat corrupti tempora temporibus earum deserunt, fuga est architecto
+                enim in, cupiditate sit sint et saepe non nulla soluta ex eum! Voluptas nemo eum reprehenderit debitis
+                soluta quae nulla, ipsa, sit accusantium molestiae ea, architecto repellat omnis at unde aliquid
+                praesentium consequuntur eos hic. Voluptate, repudiandae sunt fugit consequuntur, vitae incidunt
+                similique dolorem modi aperiam vero corrupti
+            </div>
+            <div class="right">
+                Lorem ipsum dolor sit, amet consectetur adipisicing elit. Fugit, quis! Corporis modi similique dicta
+                obcaecati, tenetur explicabo placeat corrupti tempora temporibus earum deserunt, fuga est architecto
+                enim in, cupiditate sit sint et saepe non nulla soluta ex eum! Voluptas nemo eum reprehenderit debitis
+                soluta quae nulla, ipsa, sit accusantium molestiae ea, architecto repellat omnis at unde aliquid
+                praesentium consequuntur eos hic. Voluptate, repudiandae sunt fugit consequuntur, vitae incidunt
+                similique dolorem modi aperiam vero corrupti
+            </div>
+        </div>
+    </main>
+</body>
+
+</html>

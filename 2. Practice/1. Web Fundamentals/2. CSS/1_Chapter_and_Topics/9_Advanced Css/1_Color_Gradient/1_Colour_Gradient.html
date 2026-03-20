@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Color Gradient</title>
+    <style>
+        
+        body{
+            margin: 0;
+            padding: 0;
+        }
+        html{
+            font-size: 16px;
+            font-family: sans-serif;
+        }
+        .gradient-circle{
+            border: 1px solid grey;
+            border-radius: 50%;
+            width: 400px;
+            height: 400px;
+            position:absolute;
+            margin:5vh 38vw;
+            /* We can give the direction to the gradient(to right,left,top,bottom) */
+            /* We can give the value in the numeric as well like in the degrees */
+            /* repeating-linear-gradient which repeats the gradient and we can give the values as well to the colors at how much % it should start gradient */
+
+            /* background:linear-gradient(145deg,red,purple) */
+
+            /* radial gradient goes from the center to the outward direction */
+            /* background-color: #2b4162; */
+             background-image: linear-gradient(315deg, #2b4162 0%, #12100e 74%);
+            
+            /* background-color: #000000; */
+            /* background-image: linear-gradient(147deg, #000000 0%, #2c3e50 74%); */
+
+        }
+        .container{
+            text-align:center;
+            
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Colour Gradients in the CSS</h1>
+        <div class="gradient-circle"></div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transition</title>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: black;
+        }
+
+        .box {
+            padding-top: 15vh;
+            text-align: center;
+        }
+        
+        /* img:hover{
+            width:10vw;
+        } */
+        img{
+            width:40vw;
+            border:solid limegreen;
+            transition-property: width; /* Property Selector for the transition */
+            transition-duration: 2s; /* IT sets the time in which transiton will perform (Less Time => Fast transiton , More time => Slow animaton)*/
+            transition-timing-function: ease-in;  /*How you want the property to transition*/   
+            transition-delay: 3s; /*It will Delay the transition for that much amount of time*/
+
+            /* transition : width 2s ease-in 1; => (property duration function delay) */
+        }
+        img{
+            width: 20vw;
+            
+        }
+        </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="box">
+            <img src="https://source.unsplash.com/300x300/?Neon
+                " alt="">
+        </div>
+    </div>
+</body>
+
+</html>

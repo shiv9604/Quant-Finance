@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Forms</title>
+</head>
+
+<body>
+    <div>
+        <form action="form.py"> <!--Creates form and we need to put backend file name over their...-->
+            <h2>Personal Information Form</h2>
+            <h4>In which sports you want to enroll?</h4>
+            <label>Name:
+                <!--Input tag for taking the input in the form, (placeholder = Displays the charecters inside the box till the text is entered)-->
+                <input type="text" placeholder="Enter Your Name"> 
+                <!--Lable for used to match its unique id -->
+
+                <label for="Section Id A">
+                     <!--Radio button is push type button which mostly used for defining the specific input-->
+
+                     <!--(Value = if selected then its value for radio button)
+                     (Name = To avoid it by selecting both To tell it's the same thing and to select only one of them ) 
+                     (id = unique id as per our roll number)-->
+
+                    <input type="radio" value="Football Team" name = "Section" id = "Section Id A">Football
+                </label>
+                
+                <label for="Section Id B">
+                        <input type="radio" value="Cricket Team" name = "Section" id = "Section Id B">Cricket
+                </label>
+                <br>
+                <br>
+                <label for="class"> <!--If we click on the text instead of checkbox it will selects the checkbox-->
+                    <input type="checkbox" name = "accessories" id = "classaccessories">Sport shoes
+                    <input type="checkbox" name = "accessories" id = "accessories">Jersy
+                    <input type="checkbox" name = "accessories" id = "accessories">Handgloves
+                </label>
+                <br>
+                <br>
+                
+                <!--Textera is used to take the input in lots of words like some explaination-->
+                <textarea name="Reason" id="Reason" cols="30" rows="10"placeholder="Why you want to come in our sport team?"></textarea>
+                
+                <p>Select the week for joning : </p>
+                <!--Selct the week for joining-->
+                <select name="Joining" id="Joining">Select the week for joining for the batch
+
+                    <!--first Option value should be none bcoz its for display purpose -->
+                    <option value="No week">Choose you Joining week</option>
+                    <option value="This week">This week</option>
+                    <option value="This week">Next week</option>
+                    <option value="This week">Last week</option>
+
+                </select>
+                <br>
+                <br>
+                <input type="button" value="Submit">    
+            </label>
+        </form>
+    </div>
+</body>
+
+</html>

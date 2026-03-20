@@ -1,0 +1,10 @@
+root:{--main-bg-colour} : black  = We can set the root colour and we can set to every element by settging bg-c = var(--main-bg-colour)
+
+height: calc(100vh - 8vh - 5vh) = Its sets our height to the remaining value in the screen
+
+We can Set the root properties like color bg-c and all by putting in main color in the root{}.
+
+We can create nav bar by using flexbox properties we can set it to the center as well by justify content andd align items properties.
+
+We need to remember that some properties are only applicable only on container and we should put that content in the container.
+

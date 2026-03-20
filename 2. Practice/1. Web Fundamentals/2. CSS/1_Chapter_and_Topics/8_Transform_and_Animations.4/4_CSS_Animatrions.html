@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Css_Animations</title>
+    
+    <style>
+        *{
+            margin: 0;
+            padding: 0;
+        }
+        .container{
+            height:100vh;
+            width:100vw;
+            background-color:teal;
+            color:whitesmoke;
+            display:flex;
+            justify-content:center;
+            align-items: center;
+
+        }
+
+        .box{
+            background-color: black;
+            color:whitesmoke;
+            font-size: 2vh;
+            height:30vh;
+            width:30vw;
+            display:flex;
+            justify-content:center;
+            align-items: center;
+            /* animation-name: widthAnimate; We need to specify which animation we are going to apply */
+            /* animation-duration: 3s; IT sets the time in which animation will perform (Less Time => Fast animation , More time => Slow animaton) */
+            /* animation-iteration-count: infinite; How much times animation should run */
+            /* animation-direction: alternate; */
+            /* animation-timing-function: linear; => Style of animation like (Linear, ease-in-out) */
+                animation: widthAnimate 3s infinite alternate ;
+            /* animation : name duration style delay itration count direction */ 
+        }
+
+
+
+
+        @keyframes widthAnimate {
+            from{
+                width:30vw;
+                background-color: black;
+                color:whitesmoke;
+            }            
+            
+            to{
+                width:70vw;
+                background-color:darkslategray;
+                color:whitesmoke;
+        }   
+        }
+    </style>
+
+</head>
+<body>
+    <div class="container">
+        <div class="box">
+            Welcome to SK_Devlopement World
+        </div>
+    </div>
+</body>
+</html>

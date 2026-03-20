@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grid</title>
+
+    <style>
+        *{
+            margin: 0;
+            padding: 0;
+        }
+        .container{
+            background-color:pink;
+            color:black;
+            display:grid;  /* Makes layout in grid format*/
+            height:150vh;  
+            /* grid-row-gap: 2vw;  We can set gap in grid rows
+            grid-column-gap: 5vh;  We can set gap in grid columns */
+            /* grid-gap: 2vw 5vh; It's a shorthand for grid gaps (rows value column value) */
+            grid-gap: 2vw; /* It will set the single value for the row gaps as well and column gaps as well*/
+            grid-template-columns: repeat(3,1fr);/* Creates the columns in grid = how much we put auto it will break into that much columns (Width)*/
+            grid-template-rows: repeat(3,1fr);  /* We can set the numbers of rows and we can set its height by providing the values */
+    
+            justify-content:center; /*Set the position of content in the container horizontaly*/
+            align-content: center;  /*Set the position of content in the container vertically*/
+
+         }
+
+        .item{
+            background-color:rgb(151, 196, 196);
+            text-align:center;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            /* grid-column: 1/span2; */ /*It will cover the 2 columns space together*/
+            /* grid-row: ; 1/span2*/ /*It will cover the 2 rows space together*/
+            
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="item">1</div>
+        <div class="item">2</div>
+        <div class="item">3</div>
+        <div class="item">4</div>
+        <div class="item">5</div>
+        <div class="item">6</div>
+        <div class="item">1</div>
+        <div class="item">2</div>
+        <div class="item">3</div>
+        <div class="item">4</div>
+        <div class="item">5</div>
+        <div class="item">6</div>
+    </div>
+</body>
+</html>

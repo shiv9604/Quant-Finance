@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Float</title>
+
+    <style>
+        *{
+            margin: 0;
+            padding: 0;
+        }
+
+        .container{
+            height:70vh;
+            background-color:lightslategray;
+            display: flex; /* Make it Flexbox collate in one line*/
+            flex-direction: row;
+            flex-wrap:wrap; /*Wrap the content or the elemtnts in the container when the size shrinks8*/
+            justify-content:center; /* used to change the position of all the elements in the container HORIZONTLY*/
+            align-items: center; /*used to chage the positoin of all the items in the container VERTICALLY*/
+            align-content: center; /* It works same like align-items like it will position vertically but wihout spaces anywhere => It will avoid spaces*/
+        }
+        .box1{
+            background-color:tomato;
+            width:15vw;
+            height:15vh;
+            text-align: center;
+            /* order: 1; */ /* It will change the order of element in the container*/
+            /* align-self:flex-end; */ /* It will the chage position for itself without following the container properties */
+            flex-grow:0; /* Grows the flex in his perticular direction*/
+            flex-shrink:0; /* Shrinks the flex in his perticular direction*/
+
+            
+            
+        }
+        .box2{
+            background-color:turquoise;
+            width:15vw;
+            height:15vh;
+            text-align: center;
+
+        }
+        .box3{
+            background-color:tomato;
+            width:15vw;
+            height:15vh; 
+            text-align: center;
+        }
+        .box4{
+            background-color:turquoise;
+            width:15vw;
+            height:15vh; 
+            text-align: center;
+            
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="box1">box1</div> 
+        <div class="box2">box2</div>
+        <div class="box3">box3</div> 
+        <div class="box4">box4</div> 
+    </div>
+</body>
+</html>

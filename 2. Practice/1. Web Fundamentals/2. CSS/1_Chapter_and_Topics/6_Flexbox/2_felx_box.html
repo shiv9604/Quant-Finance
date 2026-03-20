@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Float</title>
+
+    <style>
+        *{
+            margin: 0;
+            padding: 0;
+        }
+
+        .container{
+            height:70vh;
+            background-color:lightslategray;
+            display: flex; /* Make it Flexbox collate in one line*/
+            flex-direction: row;
+            flex-wrap:wrap; /*Wrap the content or the elemtnts in the container when the size shrinks8*/
+            justify-content:center; /* used to change the position of all the elements in the container HORIZONTLY*/
+            align-items: center; /*used to chage the positoin of all the items in the container VERTICALLY*/
+            align-content: center; /* It works same like align-items like it will position vertically but wihout spaces anywhere => It will avoid spaces*/
+        }
+        .box1{
+            background-color:tomato;
+            width:15vw;
+            height:15vh;
+            /* float: right; */
+            /* Float property makes the boxed side by side or move the whole div to somewhere */
+        }
+        .box2{
+            background-color:turquoise;
+            width:15vw;
+            height:15vh;
+            /* float: right; */
+
+        }
+        .box2b{
+            background-color:tomato;
+            width:15vw;
+            height:15vh; 
+        }
+        .box2c{
+            background-color:turquoise;
+            width:15vw;
+            height:15vh; 
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="box1"></div> 
+        <div class="box2"></div>
+        <div class="box2b"></div> 
+        <div class="box2c"></div> 
+    </div>
+</body>
+</html>

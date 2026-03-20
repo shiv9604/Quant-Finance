@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transition</title>
+
+    <style>
+        *{
+            margin: 0;
+            padding: 0;
+        }
+
+        .container{
+            background-color:brown;
+            height:150vh;
+            width:100vw;
+        }
+        .box{
+            background-color:darkslategray;
+            color:whitesmoke;
+            border: 2px solid black;
+            /* transform:translate(100px, 56px);*/ /*It moves the content to the forward that much 100pixel in x axis and 56 px in y direction*/
+            /*transform:rotate(0.5turn);*/ /* It will rotate our element in the given turns*/
+            /* transform-origin:0; It will transform from the start of the element and default is Center */
+            /* transform:scaleX(2); It will scale the item in x axis
+            transform:scaley(2); /* It will scale the item in y  axis*/
+            /* trasform:scale(2,2); scale(x axis value, y element value) */ 
+            /* transform:skew(X value Y value) It willl skew the elment  */
+            /* transform:matrix(1,2,3,4,5,6) It takes some values and it will move it all direction it acts as a shorthand */
+            display:inline-block;
+
+
+
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="box">
+            <img src="https://source.unsplash.com/1400x900/?Supercars,Superbikes">
+        </div>
+    </div>
+</body>
+</html>

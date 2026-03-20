@@ -1,0 +1,144 @@
+# BASELINE BACKTEST SUMMARY — FOR COMPARISON REFERENCE
+# This is the last run before the new consolidation logic was implemented.
+# When a new backtest is complete, compare every metric below against this baseline.
+
+## CONFIGURATION (what was running when this result was produced)
+- Period         : 2021-02-15 → 2024-10-31 (4 years)
+- Lot size       : 65 × 4 = 260 units
+- SL / TP        : 1.5% / 4.0% of total premium capital
+- Scan window    : 09:30 → 15:30 (full day)
+- Consolidation  : OLD method — 25/75 percentile levels, 3m candles, ±5pts of level
+- Options filter : 10% range threshold on CLOSE prices only (not high/low)
+- Same-level     : Blocked (first trade per level per day only)
+- Expiry rule    : Next expiry on expiry day
+
+## TOP-LINE PERFORMANCE
+- Total trading days  : 447
+- Total trades        : 554
+- Win rate            : 20.0%
+- Breakeven WR needed : 27.0%
+- Gap to profitability: 7.0%  ← target is to reduce this
+- Avg win             : Rs 2,259
+- Avg loss            : Rs -836
+- Win/loss ratio      : 2.7x
+- Total P&L           : Rs -1,19,626
+- Avg P&L / trade     : Rs -216
+- Best trade          : Rs +6,227
+- Worst trade         : Rs -3,510
+- Avg capital/trade   : Rs 48,757
+
+## EXIT BREAKDOWN
+- SL     : 426 trades (76.9%)
+- TP     :  99 trades (17.9%)
+- FORCED :  19 trades  (3.4%)
+
+## TRADE JOURNEY BREAKDOWN
+- Straight to SL (never went positive)  :  94 trades (17.0%)
+- Went positive then reversed to SL     : 332 trades (59.9%)
+  - of which crossed +1% then hit SL   : 117 trades (21.1%)
+- Hit TP                                :  99 trades (17.9%)
+- Forced exit                           :  19 trades  (3.4%)
+
+Peak P&L on positive-then-SL trades:
+- Median peak : Rs 260
+- Mean peak   : Rs 463
+- 117 trades (21.1%) crossed +1% profit before reversing to SL
+
+## YEAR BY YEAR
+| Year | Trades | Win Rate | Breakeven WR | Gap   | P&L         |
+|------|--------|----------|--------------|-------|-------------|
+| 2021 |    135 |   16.3%  |     27.2%    | 10.9% | Rs  -41,457 |
+| 2022 |    159 |   22.0%  |     26.4%    |  4.4% | Rs  -25,727 |
+| 2023 |    156 |   21.8%  |     29.0%    |  7.2% | Rs  -23,998 |
+| 2024 |    104 |   19.2%  |     26.1%    |  6.9% | Rs  -28,444 |
+
+Best year: 2022 — smallest gap (4.4%), closest to breakeven
+
+## HOUR BY HOUR
+| Hour | Trades | Win Rate | P&L         |
+|------|--------|----------|-------------|
+|  09  |     37 |   13.5%  | Rs  -20,800 |
+|  10  |    136 |   16.2%  | Rs  -41,132 |
+|  11  |    128 |   22.7%  | Rs  -10,660 |
+|  12  |    104 |   17.3%  | Rs  -26,559 |
+|  13  |     69 |   24.6%  | Rs   -8,788 |
+|  14  |     60 |   23.3%  | Rs  -11,752 |
+|  15  |     20 |   30.0%  | Rs      +65 |
+
+Key insight: Hour 15 is the ONLY profitable hour (Rs +65). Hours 09-10 are worst.
+
+## MONTHLY P&L
+| Month   | Trades | WR    | P&L         |
+|---------|--------|-------|-------------|
+| 2021-02 |      3 |  0.0% | Rs   -2,795 |
+| 2021-03 |     11 | 18.2% | Rs   -2,145 |
+| 2021-04 |     15 | 20.0% | Rs   -6,903 |
+| 2021-05 |     13 | 30.8% | Rs     +481 |
+| 2021-06 |     17 |  5.9% | Rs   -9,009 |
+| 2021-07 |     13 |  7.7% | Rs   -4,940 |
+| 2021-08 |     17 | 29.4% | Rs   +2,171 |
+| 2021-09 |     14 |  7.1% | Rs   -7,943 |
+| 2021-10 |     15 |  6.7% | Rs   -6,162 |
+| 2021-11 |      5 |  0.0% | Rs   -3,562 |
+| 2021-12 |     12 | 33.3% | Rs     -650 |
+| 2022-01 |     12 | 25.0% | Rs     -598 |
+| 2022-02 |     14 | 21.4% | Rs      -39 |
+| 2022-03 |     10 | 30.0% | Rs   +4,056 |
+| 2022-04 |     14 | 21.4% | Rs   -1,599 |
+| 2022-05 |     15 |  0.0% | Rs  -16,796 |
+| 2022-06 |     14 |  7.1% | Rs  -10,322 |
+| 2022-07 |     17 | 29.4% | Rs   +1,976 |
+| 2022-08 |     16 | 25.0% | Rs   -2,691 |
+| 2022-09 |      9 | 33.3% | Rs     +741 |
+| 2022-10 |     12 | 25.0% | Rs   -1,573 |
+| 2022-11 |     14 | 21.4% | Rs     -715 |
+| 2022-12 |     12 | 33.3% | Rs   +1,833 |
+| 2023-01 |     15 | 13.3% | Rs   -7,345 |
+| 2023-02 |      7 | 57.1% | Rs   +5,278 |
+| 2023-03 |     11 |  0.0% | Rs   -7,995 |
+| 2023-04 |     12 | 16.7% | Rs   -3,029 |
+| 2023-05 |     18 | 22.2% | Rs   -1,456 |
+| 2023-06 |     11 | 36.4% | Rs   +1,937 |
+| 2023-07 |     17 | 23.5% | Rs   -1,053 |
+| 2023-08 |     13 |  7.7% | Rs   -4,342 |
+| 2023-09 |     15 | 40.0% | Rs   +2,236 |
+| 2023-10 |     16 | 31.2% | Rs     +208 |
+| 2023-11 |     10 | 20.0% | Rs     +663 |
+| 2023-12 |     11 |  0.0% | Rs   -9,100 |
+| 2024-01 |      8 | 25.0% | Rs     -403 |
+| 2024-02 |      9 | 22.2% | Rs   -5,382 |
+| 2024-03 |     10 | 10.0% | Rs   -6,461 |
+| 2024-04 |     12 | 25.0% | Rs   -1,898 |
+| 2024-05 |     12 |  0.0% | Rs  -15,808 |
+| 2024-06 |     10 | 20.0% | Rs   +3,432 |
+| 2024-07 |     13 | 46.2% | Rs   +9,178 |
+| 2024-08 |      9 | 11.1% | Rs   -4,212 |
+| 2024-09 |     16 | 12.5% | Rs   -6,396 |
+| 2024-10 |      5 | 20.0% | Rs     -494 |
+
+## WHAT CHANGED IN THE NEW CODE (what to test for improvement)
+The new KCIM.py has two major upgrades vs this baseline:
+
+1. NEW detect_consolidation (visual 5m range-based):
+   - Old: 3m candles, must close within ±5pts of 25th/75th percentile level
+   - New: 5m candles, sliding window — zone range ≤40pts, avg ATR ≤20, max body ≤15pts
+   - Expected effect: fewer signals but higher quality, more visual accuracy
+
+2. NEW options premium filter (high/low instead of close only):
+   - Old: range = (close.max - close.min) / close.mean
+   - New: range = (high.max - low.min) / close.mean  ← captures wicks
+   - Expected effect: stricter filter, blocks more trades where options were already moving
+
+## HOW TO COMPARE NEW RUN AGAINST THIS BASELINE
+Run the new backtest and check these metrics in order:
+
+1. Trade count     — expect fewer trades (new consolidation is stricter)
+2. Win rate        — target > 20.0% (ideally 22-25%)
+3. Gap to BE       — target < 7.0% (ideally < 5%)
+4. Total P&L       — target better than Rs -1,19,626
+5. Year 2021 gap   — biggest problem (10.9%) — does new code improve it?
+6. Hour 09+10      — worst hours — does new detection reduce bad signals there?
+7. Skip reasons    — check that 'options_not_consolidating' appears as a skip reason
+                     (confirms the high/low filter is firing)
+8. Trade journey   — does 'straight to SL' % drop below 17.0%?
+                     (new filter should block more low-energy entries)

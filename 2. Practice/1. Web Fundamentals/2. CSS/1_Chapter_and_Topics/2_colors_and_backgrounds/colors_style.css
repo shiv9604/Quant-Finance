@@ -1,0 +1,15 @@
+
+body{
+
+    background-color : greenyellow;
+    color : black;
+}
+
+.nav{
+    background-color : rgb(253, 253, 253);
+    color :black;
+    margin : 2;
+    border : 10px;
+    height : 100px;
+    
+}

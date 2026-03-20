@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Header_Using_Css_Grid</title>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+        }
+
+        header {
+            background-color: darkslategrey;
+            color: whitesmoke;
+            height:5vh;
+            width:100%;
+        }
+        ul{
+            margin-left: 70vw;
+            
+        }   
+        li{
+            grid-template-columns: auto auto auto auto;
+            display:inline-grid;
+            padding:1.5vh 4vh;
+        }
+        .company{
+            padding-right: 150vh;
+            font-size: 2vh;
+            position:relative;
+            right: 140vh;
+        }
+       
+    </style>
+</head>
+
+<body>
+    <header>
+        <nav>
+            <ul>
+                
+                <li>Home</li>
+                <li>About</li>
+                <li>Services</li>
+                <li>Contact</li>
+            </ul>
+        </nav>
+    </header>
+    <div class="container">
+        Lorem ipsum dolor sit amet consectetur adipisicing elit. Ad magnam harum eum esse hic illo ipsum molestias
+        repellendus praesentium adipisci, doloremque natus aut amet vero voluptatibus commodi deleniti nostrum?
+        Perferendis, ex nobis maxime totam obcaecati est voluptates provident error dolores, aspernatur facilis minima
+        autem officiis?
+
+    </div>
+</body>
+
+</html>

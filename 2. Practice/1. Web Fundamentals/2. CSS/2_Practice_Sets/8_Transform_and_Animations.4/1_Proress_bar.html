@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Progress_Bar</title>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+        }
+
+        .container{
+            background-color:rgb(56, 56, 56);
+            width:100vw;
+            height:100vh;
+        }
+        .box{
+            background-color:red;
+            width:0vw;
+            height:0.5vh;
+            animation:progressbar 2s infinite;
+            /* transition: width 2s ease-in-out; */
+        }
+
+        @keyframes progressbar {
+            from{
+                width:0vw;  
+            }
+            to{
+                width:100vw;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="box">
+
+        </div>
+    </div>
+</body>
+
+</html>

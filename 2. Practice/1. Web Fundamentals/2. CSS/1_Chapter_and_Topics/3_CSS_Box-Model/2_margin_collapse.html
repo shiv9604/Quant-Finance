@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Margin_Collapse</title>
+
+
+    <style>
+        *{
+            margin: 0;
+            padding: 0;
+        }
+        
+        body
+        {
+            background-color:rgba(6, 6, 153, 0.452);
+            color : rgb(255, 255, 255);
+            
+        }
+        /* In Margin collapse Two elements margin will collapse and it will come undrer bigger one and they both collate with each other */
+
+        .black{
+            background-color:black;
+            color : whitesmoke;
+            height: 150px;
+            margin: 30px;
+        }
+        .yellow{
+            background-color :yellow;
+            color : black;
+            height: 150px;
+            margin: 30px;
+        }
+
+
+
+    </style>
+</head>
+<body>
+   <div class="black">
+       Lorem, ipsum dolor sit amet consectetur adipisicing elit. Iste aspernatur ratione quia quod quo deserunt, architecto pariatur vitae similique facilis error, odit impedit adipisci iure praesentium obcaecati id laboriosam. Ut magnam eum tenetur ipsam, totam voluptates non nam delectus nisi officia, provident eaque sint tempora.
+   </div> 
+
+   <div class="yellow">
+       Lorem ipsum dolor sit amet consectetur adipisicing elit. Velit error repellat eos harum culpa modi nam tempora commodi nostrum quisquam voluptatum corrupti libero cumque minus aliquid perferendis aperiam reprehenderit doloremque quod molestiae dignissimos rem, ipsum autem laudantium? Architecto quod asperiores, libero eaque minima labore! Sint nam, tenetur quas incidunt sit reprehenderit illo officia laudantium qui magnam vitae esse perferendis quis quam! Velit deserunt voluptatem dolorum nobis, possimus ratione distinctio illo quae dicta?
+   </div>
+   
+
+</body>
+</html>

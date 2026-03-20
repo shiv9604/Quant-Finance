@@ -1,0 +1,58 @@
+=======================================================
+STEP 5: BACKTEST — CONSOLIDATION + SMART EXPIRY
+=======================================================
+Period         : 2024-01-01 → 2024-10-31
+Lot size       : 65 × 4 lots = 260 units
+Scan window    : 09:30:00 → 15:30:00
+Consolidation  : ±5pts of 25/75 level, min 3 candles
+Expiry rule    : Next expiry on expiry day
+SL / TP        : -2.5% / +5% of capital deployed
+Trading days   : 209
+Step 5: 100%|██████████| 209/209 [09:41<00:00,  2.78s/it]
+=======================================================
+STEP 5 BACKTEST COMPLETE
+=======================================================
+Total days     : 209
+Trades entered : 167
+Days skipped   : 1755
+
+Skip reasons:
+reason
+same_level_reentry           660
+options_not_consolidating    642
+premium_imbalance            310
+no_consolidation              55
+no_entry_ltp                  44
+no_expiry                     44
+
+--- PERFORMANCE SUMMARY ---
+Win rate          : 19.8%
+Total P&L (₹)     : ₹-33,319.00
+Avg P&L / trade   : ₹-199.51
+Best trade        : ₹7,709.00
+Worst trade       : ₹-3,367.00
+Avg capital / day : ₹57,176.72
+
+Exit reasons:
+exit_reason
+SL        134
+TP         32
+FORCED      1
+
+Monthly P&L:
+month
+2024-01   -11505.0
+2024-02   -10504.0
+2024-03   -16237.0
+2024-04    -9750.0
+2024-05    -4667.0
+2024-06     5733.0
+2024-07    17290.0
+2024-08     3822.0
+2024-09    -6747.0
+2024-10     -754.0
+Freq: M
+
+✅ Trade log saved to backtest_trades_step5.csv
+✅ P&L trail saved to backtest_pnl_trail.csv
+   4,160 rows — every minute of every trade
