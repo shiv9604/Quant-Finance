@@ -1,8 +1,11 @@
+
+
 # Market Making
 
 Market making is way to provide liquidity on perticular asset or in market provide to keep that instrument tradeable and earning profit from the bid and ask spread.
 
----
+## Foundation
+
 ### Bid & Ask Price 
 Bid is price buyer is willing to pay for asset & ask is price sellers willing to pay for selling an asset.
 
@@ -440,6 +443,7 @@ Market makers evaluate profitability on a per-fill basis, not per round trip. Ro
 3. Persistent negative per-fill EV leads to slow capital erosion.
 4. Professional spread setting is based on expected post-fill risk, not theoretical full spread.
 
+
 ---
 ### Estimating Expected Adverse Move
 
@@ -723,3 +727,3516 @@ A professional market making system is a coordinated set of modules that operate
 3. Latency disadvantages increase adverse selection.
 4. Spread must reflect infrastructure capability.
 5. Engine design determines survivability in competitive markets.
+
+---
+## Intermediate to Advance (Covers depth for every layer)
+
+---
+### VPIN — Volume-synchronized Probability of Informed Trading
+
+In any market, every trade is made by one of two types of participants:
+- **Noise trader** — buying or selling for their own reasons (rebalancing, cash need, random). No special information about where price is going.
+- **Informed trader** — buying or selling because they know something. Price is about to move in their direction.
+
+You cannot see who is who. But you can measure the imbalance in aggressive order flow.
+
+VPIN divides trading activity into fixed-volume buckets (not fixed time — volume). In each bucket it asks: what fraction of volume was aggressive buying vs aggressive selling?
+
+```
+Bucket with 70% aggressive buys, 30% aggressive sells → imbalance = |70 - 30| = 40%
+Bucket with 52% aggressive buys, 48% aggressive sells → imbalance = |52 - 48| = 4%
+```
+
+The logic: informed traders trade in one direction (they know price is going up → they buy). Noise traders are more random — their buying and selling roughly cancels out. When imbalance is high → likely informed flow. When imbalance is near zero → likely noise trading.
+
+VPIN is the rolling average of that imbalance across recent volume buckets.
+
+```
+High VPIN (> 0.7) → someone likely knows something right now
+Low VPIN  (< 0.3) → mostly random noise trading
+```
+
+**Why volume buckets and not time buckets?**
+Time is a poor measure of information arrival. In a slow market, 1 minute might carry 10 trades. In a fast market, 1 minute might carry 1000 trades. Volume buckets normalize for activity — each bucket represents the same amount of actual trading, regardless of how long it took.
+
+**Use in market making**: VPIN classifies the regime at fill time. A fill that arrives when VPIN is 0.8 is likely from an informed trader — the 100ms markout will be adverse. A fill at VPIN 0.2 is likely noise — the markout will be small. This is the basis for regime-bucketed markout analysis.
+
+---
+
+### OFI — Order Flow Imbalance
+
+VPIN looks at completed trades — what actually got executed. OFI looks at the order book itself — what is being added and removed before any trade happens.
+
+Every time the order book updates, something changes:
+- Someone adds a bid → buying pressure increases
+- Someone cancels a bid → buying pressure decreases
+- Someone adds an ask → selling pressure increases
+- Someone cancels an ask → selling pressure decreases
+
+OFI tracks the net change:
+
+```
+OFI = (bid size added − bid size cancelled) − (ask size added − ask size cancelled)
+
+Positive OFI → more buying pressure building in the book
+Negative OFI → more selling pressure building in the book
+```
+
+**The key difference from VPIN**: VPIN measures what already happened (completed trades). OFI measures what is building right now (order book changes). OFI is earlier in time — it detects pressure before any trade fires.
+
+A large buyer accumulating quietly shows up in OFI first (lots of bids being added to the book) before VPIN catches the actual aggressive trades hitting the ask.
+
+Together, OFI and VPIN give two angles on the same question: who is about to trade aggressively, and in which direction? OFI is the leading signal. VPIN is the confirming signal.
+
+---
+
+### EWMA — Exponentially Weighted Moving Average
+
+A regular average treats all data points equally — a trade from 10 minutes ago counts as much as a trade that just happened. EWMA says: recent data matters more than old data. Each new data point gets high weight. Older points decay.
+
+```
+Trade 1: buy  (+1) → EWMA = +1.0
+Trade 2: buy  (+1) → EWMA = +0.9   (old value decayed slightly)
+Trade 3: sell (-1) → EWMA = +0.5   (sharp drop but prior buys still matter)
+Trade 4: buy  (+1) → EWMA = +0.7   (recovering)
+Trade 5: sell (-1) → EWMA = +0.3
+```
+
+The decay speed is controlled by lambda (λ):
+- λ = 0.99 → slow decay — old trades still matter for a long time, smoother signal
+- λ = 0.50 → fast decay — recent trades dominate almost immediately, noisier signal
+
+**Why EWMA instead of a simple average?**
+Markets change. A burst of buying 20 minutes ago is less relevant than a burst 5 seconds ago. A simple average treats them identically. EWMA keeps the model responsive to current conditions without overreacting to individual noisy ticks.
+
+Used throughout market making:
+- Flow adjustment (Layer 0): EWMA of trade sign detects stealth accumulation
+- Toxicity model: EWMA of adverse drift tracks whether recent fills are getting more or less toxic
+- Volatility estimation: EWMA of |returns| tracks short-term vs long-term volatility regime
+
+---
+
+### Market Regime
+
+Regime means: what mode is the market in right now? A market maker faces completely different conditions depending on the regime. Three regimes matter:
+
+**Quiet** — low volume, random noise trading, no directional pressure. Fills are mostly clean. Adverse markouts are small. Best environment for a market maker — earn spread, low adverse selection risk.
+
+**Normal** — some directional activity but mixed. Moderate informed flow mixed with noise. Fills are sometimes toxic, sometimes clean. Engine needs to be careful but can still participate profitably.
+
+**Informed** — someone knows something. Strong directional flow, high VPIN, aggressive accumulation or liquidation. Fills in this regime are almost always toxic. Quoting normally here means every fill moves against you.
+
+**Regime is not directly observed — it is classified from signals.** VPIN is the primary classifier in most systems. High VPIN → informed regime. Low VPIN → quiet. The classification is only as good as the signal.
+
+**Why regime matters for markout analysis**: the regime at the moment of the fill is the context for that fill's outcome. A -15 tick adverse move in an informed regime is expected — the signal should have warned you. A -15 tick adverse move in a quiet regime is a surprise — something your model missed. Bucketing fills by regime separates what the model should have handled from what it could not have predicted.
+
+---
+
+### Distribution
+
+A distribution is the full picture of a set of values — not just the average, but where most values cluster, how spread out they are, and how extreme the worst cases get.
+
+In market making, "markout distribution" means: if you plot all your 100ms adverse moves across every fill in a session, what does that picture look like?
+
+```
+Most fills:   -2 to -5 ticks   ← clustered here, this is normal
+Some fills:   -10 to -15 ticks ← less frequent
+Rare fills:   -30 to -50 ticks ← the tail — infrequent but severe
+```
+
+**Why the average alone is not enough**: two assets can have the same average adverse move but completely different distributions. One has consistent small losses (-5 ticks every fill). The other has mostly clean fills but occasional -50 tick disasters (same average, completely different risk). The tail is what kills a market maker — not the average.
+
+**Distribution shift**: when the distribution of recent fills starts moving — the average worsens, the tail gets heavier — that is a signal that market conditions have changed. A professional engine detects this shift within a session and widens spread before more fills arrive in the new, worse distribution.
+
+---
+
+### p_tox — Probability of Toxic Flow
+
+A number between 0 and 1 computed by the engine before placing any quote. It answers: given everything observable right now — VPIN, recent drift, volatility — what is the probability that the next fill will come from an informed counterparty who knows price is about to move against the engine?
+
+```
+p_tox = 0.1  →  10% chance next fill is toxic — mostly safe to quote normally
+p_tox = 0.7  →  70% chance next fill is toxic — spread needs to be much wider
+p_tox = 0.95 →  almost certain next fill is informed — quoting here is very expensive
+```
+
+p_tox is computed per side (bid and ask separately) because toxicity is often directional. A large buyer makes ask fills toxic while bid fills may still be clean. A symmetric single p_tox would over-adjust the wrong side.
+
+p_tox summarises all toxicity signals (flow, drift, volatility) into one score the engine can act on continuously. Spread and size both respond proportionally — not a binary gate.
+
+---
+
+### CVaR99 — Conditional Value at Risk at 99th Percentile
+
+Regular average tells you the typical adverse move. CVaR99 tells you: in the worst 1% of fills on this asset, what is the average loss?
+
+```
+100 fills on SUI:
+- 99 fills: average adverse markout = -5 ticks
+- 1 worst fill: -80 ticks
+
+CVaR99 = -80 ticks  ←  the tail loss, not the average
+```
+
+Why the tail matters more than the average in market making: a system with good average but fat tail is sitting on a time bomb. You can have 1000 profitable fills and one fill that wipes them all out. CVaR99 specifically measures the severity of the worst cases.
+
+CVaR99 differs per asset because book depth differs:
+- Deep books (AAVE, LINK): large moves are rare, CVaR99 relatively small
+- Thin books (SUI, TRUMP, NEO): when someone sweeps the book, the move is violent, CVaR99 much larger
+
+A system that ignores CVaR99 and only tracks average adverse move will systematically underprice risk on thin-book assets.
+
+---
+
+### TailScore
+
+Combines p_tox and CVaR99 into one number capturing both how likely a toxic fill is AND how bad it will be:
+
+```
+TailScore = p_tox × CVaR99_severity
+```
+
+Why both are needed:
+
+```
+Asset A: p_tox = 0.8,  CVaR99 = -3 ticks   →  TailScore = 2.4   (likely toxic, small damage)
+Asset B: p_tox = 0.3,  CVaR99 = -60 ticks  →  TailScore = 18.0  (less likely, catastrophic when hits)
+```
+
+Asset B is far more dangerous despite lower p_tox. TailScore captures this. p_tox alone would make Asset A look more dangerous.
+
+TailScore drives spread widening continuously — not a binary cutoff. High TailScore → spread widens proportionally, size reduces. The engine keeps quoting at any TailScore level; it just prices the risk correctly.
+
+---
+
+### Adverse Markout
+
+Adverse markout is the post-fill price movement against your position direction, measured at a fixed time horizon.
+
+```
+You bought (bid fill) at 100.00
+Price at 100ms later: 99.85
+Adverse markout at 100ms = -15 ticks  (price moved down, against your long)
+
+You sold (ask fill) at 100.10
+Price at 100ms later: 100.25
+Adverse markout at 100ms = -15 ticks  (price moved up, against your short)
+```
+
+"Adverse" means against you. If price moved in your favour after the fill, the markout is positive — that fill was actually good for you. In practice most fills by an informed counterparty have negative markouts because the counterparty knew which way price was about to move.
+
+The average adverse markout is what the half-spread must exceed for the engine to have positive expected value:
+
+```
+fill_ev = half_spread − average_adverse_markout
+```
+
+If adverse markout > half_spread → losing money on every fill even if spread looks wide enough.
+
+---
+### Defensive Alpha (Expected Value Protection Layer)
+
+A professional market making system must continuously evaluate whether providing liquidity is profitable under current market conditions. Defensive alpha is the layer that estimates adverse selection risk and prevents participation in negative expected value states.
+
+This layer converts microstructure signals into an expected value (EV) estimate and uses it to control participation and pricing decisions in real time.
+
+**Core Objective -**  
+Ensure the system only trades when:
+
+EV (Expected Value per fill) > 0
+
+**Key Equation -**
+
+EV = Half Spread − Expected Adverse Move (EAM)
+
+Where:
+
+- Half Spread = reward for providing liquidity  
+- EAM = expected loss due to informed order flow  
+
+**Toxicity Modeling (Adverse Selection Estimation) -**
+
+Defensive alpha estimates EAM using three complementary signals:
+
+1. **Flow Toxicity (Leading Signal)**  
+   Measures persistence of aggressive order flow.
+
+   - flow = EWMA(trade_sign)  
+   - tox_flow = |flow|
+
+   Interpretation:  
+   High → informed directional flow  
+   Low → random / neutral flow  
+
+   Purpose:  
+   Detects adverse selection before price movement.
+
+2. **Drift Toxicity (Realized Signal)**  
+   Measures actual price movement after a fill.
+
+   - drift = (mid_after − fill_price) × fill_side  
+   - tox_drift = max(0, −drift)
+
+   Interpretation:  
+   Negative → adverse selection  
+   Positive → favorable fill  
+
+   Purpose:  
+   Confirms whether fills were toxic.
+
+3. **Volatility Risk (Uncertainty Signal)**  
+   Measures instability of fair value.
+
+   - sigma_short = EWMA(|returns|, fast)  
+   - sigma_long  = EWMA(|returns|, slow)  
+   - tox_vol = sigma_short / sigma_long  
+
+   Interpretation:  
+   ≈1 → stable  
+   >1.5 → elevated risk  
+   >2 → unstable  
+
+   Purpose:  
+   Scales magnitude of potential adverse move.
+
+**Combined Toxicity Model -**
+
+toxicity =  
+w1 × tox_flow +  
+w2 × tox_drift +  
+w3 × tox_vol  
+
+**Expected Adverse Move -**
+
+EAM = k_tox × toxicity  
+
+**Expected Value -**
+
+EV = half_spread − EAM  
+
+**System Integration -**
+
+1. **Participation Control**  
+   order_qty *= f(EV)
+
+   - EV > 0 → full participation  
+   - EV ≈ 0 → reduced participation  
+   - EV < 0 → minimal / no trading  
+
+2. **Spread Adjustment**  
+   spread *= (1 + k × max(0, −EV))
+
+**System Role in Architecture -**
+
+This layer operates inside the continuous feedback loop and directly influences:
+
+- Participation  
+- Spread width  
+- Fill quality  
+
+It connects:
+
+- Market Data Layer → inputs (flow, trades, price)  
+- Quote Engine → outputs (order size, spread)  
+
+**Behavioral Interpretation -**
+
+- Flow → “something is happening”  
+- Drift → “it already hurt”  
+- Volatility → “it can hurt more”  
+
+**Key Properties -**
+
+- O(1) computation (latency safe)  
+- Event-driven (per fill + rolling updates)  
+- Self-adaptive across assets  
+
+**Common Pitfalls -**
+
+- Using flow alone (too noisy)  
+- Using drift alone (too lagging)  
+- Using absolute volatility instead of relative  
+- Hard thresholds instead of EV-based control  
+
+**Final Insight -**
+
+Defensive alpha does not create profit.  
+It ensures the system only trades when the spread compensates for adverse selection.
+
+
+---
+## Market making Profitability
+
+---
+
+### Layer 0 — Fair Value / Microprice Quality
+
+**Status: ✅ Done**
+
+---
+
+**What It Is**
+
+A market maker needs one thing before placing any quote: an internal estimate of what the asset is actually worth right now. This is called **fair value**.
+
+Every quote is placed around this number:
+- Bid = fair_value − half_spread
+- Ask = fair_value + half_spread
+
+If fair value is wrong, the quote is wrong. A wrong quote causes adverse selection even if every other signal is perfect — because you are quoting at the wrong price, not because the counterparty is informed.
+
+Key distinction: adverse selection from informed flow and adverse selection from stale fair value look identical in markout data but have completely different fixes. Confusing the two leads to widening spreads when the real fix is improving fair value accuracy.
+
+---
+
+**Why Raw Mid Is Incomplete**
+
+Imagine a physical market — a fruit stall. Seller has 200 mangoes at ₹100. One buyer wants 1 mango at ₹99. Mid = ₹99.50.
+
+Now 50 more buyers arrive, all wanting mangoes at ₹99. Suddenly 50 buyers, 1 seller. True value just went up — demand swamped supply. But mid is still ₹99.50. It didn't move. Mid is blind to imbalance because it only looks at the best price on each side, not how much is sitting there.
+
+---
+
+**Microprice — Why the Formula Makes Sense**
+
+```
+Ask: 100.10  (qty = 50)   ← only 50 sellers
+Bid:  99.90  (qty = 200)  ← 200 buyers waiting
+```
+
+Ask: what is more likely to happen next?
+- A market sell hits the bid at 99.90 → price stays or goes down
+- A market buy hits the ask at 100.10 → price goes up
+
+There are 200 units of buy intent and only 50 units of sell intent. The next aggressive order is statistically more likely to be a buy. Price is more likely to move toward 100.10 than 99.90 — before any trade happens.
+
+Microprice captures this:
+```
+microprice = (bid_qty × ask_price + ask_qty × bid_price) / (bid_qty + ask_qty)
+           = (200 × 100.10 + 50 × 99.90) / 250
+           = 100.06
+```
+
+Why multiply bid_qty by ask_price? Because large bid_qty means high probability of upward movement — so it pulls the estimate toward the ask. Think of each unit of volume as a vote: every bid-side unit votes that price goes to the ask, every ask-side unit votes that price goes to the bid. The vote count determines fair value.
+
+Sanity check — when does microprice equal mid?
+```
+bid_qty = ask_qty = 100:
+microprice = (100 × 100.10 + 100 × 99.90) / 200 = 100.00 = mid
+```
+Perfectly balanced book → microprice = mid. Makes complete sense.
+
+What microprice still misses: it only sees your own venue's book right now. It has no idea what's happening on Binance.
+
+---
+
+**Cross-Venue — Why It Matters**
+
+You are a market maker on Bybit, quoting SOL at 100.00 / 100.10.
+
+At 10:00:00.000, a large hedge fund decides to buy 50,000 SOL. They go to Binance first — most liquidity, tightest spread. They buy aggressively. Within 200ms, Binance SOL moves from 100.00 to 101.00.
+
+On Bybit, nothing has happened yet. Your book still shows 99.90 / 100.10. Your fair value based on Bybit's book: 100.00.
+
+At 10:00:00.200, an arbitrageur sees:
+- Binance SOL: 101.00
+- Bybit SOL (your ask): 100.10
+
+He buys from you at 100.10 and sells on Binance at 101.00. Free 90 cents per SOL.
+
+From your side: you got filled on your ask. Price then jumps to 101.00 on Bybit too. Your 1-second markout shows a 90-tick adverse move. Looks like toxic informed flow. It was not — the counterparty just read Binance 200ms before your Bybit fair value updated.
+
+The fix: anchor Bybit fair value to Binance. The moment Binance moves to 101.00, your Bybit fair value becomes 101.00 regardless of what Bybit's own book shows. Your ask immediately reprices to 101.10. The arbitrageur finds nothing cheap. You are protected.
+
+Why Binance specifically? Because Binance is where price is discovered first — highest volume, most participants, tightest spreads. Informed traders go there to execute. Other exchanges follow. Binance moves, everyone else catches up.
+
+What cross-venue still misses: stealth accumulation — a large buyer breaking their order into small chunks so the book looks balanced while they accumulate. The book on every venue looks normal but the flow pattern tells a different story.
+
+---
+
+**Flow Adjustment — What Both Above Miss**
+
+Scenario: you have perfect microprice and perfect cross-venue anchor. Order book looks balanced on all venues. Binance matches Bybit. Microprice = mid = 100.00.
+
+But in the last 30 seconds, there have been 15 aggressive buy trades in a row on Binance. Small sizes, but consistently buying. No visible book imbalance because sellers keep replenishing the ask.
+
+What is actually happening? A large trader is buying in small chunks — deliberately spreading the order so it does not move the book too fast. Book looks balanced, but the flow pattern says otherwise.
+
+At the 16th trade, price jumps. The large buyer finishes accumulating and selling pressure runs out. Fair value moves up by 5 ticks.
+
+Microprice missed it — the book looked balanced the whole time.
+Cross-venue missed it — Binance book also looked balanced.
+Flow adjustment catches it — 15 consecutive aggressive buys is a signal.
+
+How it works: assign +1 to every aggressive buy, -1 to every aggressive sell. Take a running EWMA (recent trades count more than old ones). After 15 consecutive buys, EWMA ≈ +0.8 (strongly positive). This shifts fair value up slightly, repricing your ask. The stealth accumulator finds your quote less cheap.
+
+Why decay? Because markets do not move in one direction forever. After buying pressure stops, EWMA fades back toward zero. Fair value drifts back to neutral. Without decay, one burst of buying would keep fair value elevated for hours — which would be wrong.
+
+---
+
+**How All Three Work Together — Complete Scenario**
+
+SOL/USDT:
+
+**t = 0** — Everything calm, balanced books everywhere.
+```
+Binance: 100.00 / 100.10  (balanced)
+Bybit:   100.00 / 100.10  (balanced)
+
+Raw mid:     100.05
+Microprice:  100.05   (balanced = same as mid)
+Cross-venue: 100.05   (Binance matches Bybit)
+Flow signal: 0.0      (no directional trades)
+
+Fair value:  100.05
+```
+
+**t = 100ms** — Large buyer starts accumulating on Binance in small chunks.
+```
+Binance: 15 aggressive buys, book still looks balanced (sellers replenishing)
+Bybit:   unchanged
+
+Microprice:  100.05  (Bybit book still balanced)
+Cross-venue: 100.05  (Binance price not moved yet)
+Flow signal: +0.6    (15 consecutive buys detected)
+
+Fair value shifts to: 100.07
+Your ask reprices:    100.17  (instead of 100.10)
+```
+
+**t = 200ms** — Buying accelerates. Binance ask side starts thinning.
+```
+Binance: 100.00 / 100.20  (asks being consumed)
+Bybit:   100.00 / 100.10  (lagging)
+
+Microprice:  100.05  (Bybit book still balanced)
+Cross-venue: 100.10  (Binance mid now higher)
+Flow signal: +0.85
+
+Fair value:  100.12
+Your ask:    100.22
+```
+
+**t = 350ms** — Binance jumps to 100.80 as the buyer clears the book.
+```
+Binance: 100.70 / 100.90
+Bybit:   still showing 100.00 / 100.10
+
+Microprice:  100.05  (Bybit book has not caught up)
+Cross-venue: 100.80  (Binance is the truth)
+Flow signal: +0.95
+
+Fair value:  100.80
+Your ask:    100.90
+```
+
+Without cross-venue: your ask is at 100.10 when it should be 100.90 → arbitrageur takes 70 ticks from you → markout shows massive adverse move → looks like toxic flow → real cause was stale fair value.
+
+With all three layers active: your ask reprices continuously as each signal fires. By the time the arbitrageur looks, it is already at 100.90. Nothing cheap to take.
+
+---
+
+**What Each Layer Sees vs Misses**
+
+| Method | What it sees | What it misses |
+|---|---|---|
+| Raw mid | Best bid and ask price | Book imbalance, cross-venue moves, flow |
+| Microprice | Book imbalance on your venue | Cross-venue moves, stealth accumulation |
+| Cross-venue | Price discovery on other exchanges | Stealth accumulation within one venue |
+| Flow adjustment | Pattern of recent aggressive trades | Anything visible in the book |
+
+They are not alternatives — they are layers. Each catches something the others are blind to. A professional engine runs all four simultaneously.
+
+---
+
+**Professional Standard — Jane Street / Citadel Level**
+
+| Component | What they do |
+|---|---|
+| Base estimate | Microprice — always, non-negotiable minimum |
+| Cross-venue anchor | All major venues merged; anchor to price leader |
+| Flow adjustment | Trade sign EWMA + OFI, decaying over time |
+| Volatility scaling | Fair value uncertainty widens in high-vol regimes |
+| Update speed | Sub-millisecond, every book update |
+
+Key property: their fair value is predictive, not reactive. It shifts before price jumps because it reads pressure signals building in the book and flow — not after price has already moved.
+
+---
+
+**Summary**
+
+| | |
+|---|---|
+| **What it is** | Engine's internal estimate of where the asset should trade right now |
+| **Why it matters** | Every quote anchors here — wrong anchor = adverse selection regardless of other signals |
+| **Professional standard** | Microprice + cross-venue + flow adjustment + vol scaling, sub-ms updates |
+
+---
+
+### Layer 0.5 — Potemkin Check / Engine vs Infra Metric
+
+**Status: ✅ Done**
+
+---
+
+**What It Is**
+
+Before analysing any session data — fills, markouts, adverse selection — you need to answer one question: did the engine's orders actually reach the exchange?
+
+This sounds obvious. It is not. An engine can log hundreds of order dispatches while the exchange received zero of them. Everything inside the engine looks healthy. The logs look normal. But nothing actually happened on the venue side.
+
+This is called a **Potemkin** — named after Prince Potemkin who built fake village facades to impress Catherine the Great during her Crimea tour. Thriving villages from the outside. Nothing behind them.
+
+In trading: engine logs show 100 dispatches. Exchange records show 0 placements. From inside the system, everything looks fine. Behind the facade: the engine was quoting into the void.
+
+---
+
+**Why This Must Come Before Markout Analysis**
+
+If you run markout analysis on a Potemkin session, you are analysing ghost data. The fills may be real but the context — all the orders that "were placed" but never reached the exchange — is fabricated. Your adverse selection statistics are wrong. Your EV calculations are wrong. Everything downstream is built on fiction.
+
+Tuning adverse selection parameters based on Potemkin data is like a doctor adjusting medication doses based on a broken thermometer. The actions feel logical but the inputs are invalid.
+
+---
+
+**The Two Metrics**
+
+Every action the engine takes has two observable points:
+
+- **Engine metric** — what did the engine decide to do? Measured inside the engine: dispatch counters, order logs. "I sent 100 order placement requests."
+- **Infra metric** — what did the venue actually do? Measured at the exchange: REST API order history. "I received and processed 60 order placements from your account."
+
+Healthy system: engine metric ≈ infra metric. Small gap is normal.
+Potemkin system: engine metric = 100, infra metric = 0. Complete divergence.
+
+---
+
+**The Gate Check**
+
+Cross-reference engine claims against exchange REST API before trusting any session:
+
+```
+Gap = |engine_claimed - exchange_received| / engine_claimed
+
+Gap < 25%  → session trustworthy, proceed with analysis
+Gap ≥ 25%  → Potemkin, stop, categorise, fix before analysing
+```
+
+Why 25%? Some gap is always normal — order rejections, timing, partial fills. Under 10% is typical noise. Over 25% means something structural broke, not just noise.
+
+Also check position state:
+```
+Engine believes: long 5 SUI on Bybit
+Bybit REST API:  0 open positions
+
+→ Engine's position belief is wrong → all inventory calculations invalid
+```
+
+---
+
+**Five Potemkin Types — Categorisation**
+
+When a session fails the gate, you do not need deep research to know what type it is. The axis of divergence tells you immediately:
+
+**Type A — Total Silence**
+```
+Engine sent: 500    Exchange received: 0
+```
+Nothing left the system. Causes: dead WebSocket, wrong endpoint, auth failure, test mode left on. Fix is in connectivity or configuration.
+
+**Type B — Rate Limit Potemkin**
+```
+Engine sent: 500    Exchange received: 300
+(first 300 fine, then exchange started rejecting)
+```
+Engine hit the venue's per-minute rate limit. Exchange returned error codes. Engine logged "sent" without properly checking the response. Fix is in rate limit handling.
+
+**Type C — Symbol / Instrument Potemkin**
+```
+Engine sent: 500 orders for "SUIUSDT"
+Exchange received: 0  (venue expects "SUI-USDT-PERP")
+```
+Orders routed to a symbol that does not exist. Exchange returned rejection, engine misread it as success. Fix is in symbol mapping.
+
+**Type D — Fill Reconciliation Potemkin**
+```
+Placed count: matches ✓
+Engine fill log: 23 fills    Exchange fill history: 15 fills
+```
+Orders reached the exchange and were placed correctly. But fills did not reconcile back into the engine properly — missed fill events, wrong fill tracking. Fix is in the fill reconciliation layer, not dispatch.
+
+**Type E — Position State Drift**
+```
+Placed count: matches ✓    Fill count: matches ✓
+Engine believes: long 5 SUI    Bybit REST: 0 open positions
+```
+Subtler. Individual fills tracked but position ledger drifted over time — wrong direction, missed close, ghost carry from previous session. Fix is in position state management.
+
+---
+
+**Quick Category Identification**
+
+```
+placed_count diverges heavily        → Type A, B, or C  (dispatch problem)
+placed_count matches, fills diverge  → Type D           (fill reconciliation problem)
+fills match, position diverges       → Type E           (position state drift)
+```
+
+Category identification is a 2-minute check — just look at which number diverges. The root cause investigation is deeper work done in research and log analysis cycles.
+
+---
+
+**When Each Step Happens**
+
+| When | What you do |
+|---|---|
+| Before any session analysis | Run the 25% gate — pass or fail |
+| Session fails the gate | Quick category identification — which axis diverges? |
+| Category identified | Root cause investigation → research and log analysis work |
+
+---
+
+**Summary**
+
+| | |
+|---|---|
+| **What it is** | Verification that engine orders actually reached the exchange before trusting any session data |
+| **Why it matters** | Markout analysis on Potemkin data produces wrong conclusions — wrong inputs, wrong fixes |
+| **The gate** | Gap < 25% → trust session. Gap ≥ 25% → stop, categorise, fix |
+| **Quick category** | Which axis diverges: placed / fills / position → points to dispatch / reconciliation / state |
+| **Deep fix** | Research and log analysis time — not session analysis time |
+| **Professional standard** | Every session validated against exchange REST truth before any analysis runs |
+
+---
+
+### Layer 1 — Fill Markout Analysis
+
+**Status: ✅ Done**
+
+---
+
+**What It Is**
+
+A markout is the price movement against you after a fill, measured at fixed time horizons. After the engine is filled on its bid — say, buying SOL at 100.00 — you measure where SOL trades at 100ms later, 500ms later, 1s later, 5s later. If SOL is at 99.85 at 100ms, the 100ms markout is -15 ticks: the fill immediately moved against you.
+
+Markout analysis tells you whether your fill was profitable, on average, at each horizon. If average adverse move at 100ms is larger than your half-spread, you are losing money on every fill before the second leg even has a chance to execute.
+
+Without markouts, everything else is guessing. You can have a spread, a toxicity signal, an inventory controller — but if you do not measure what actually happens after each fill, you cannot know whether the spread is wide enough, whether the toxicity signal is working, or where the loss is really coming from.
+
+---
+
+**Why the Naive Approach Fails**
+
+The naive approach is to look at session gpnl and ask "did we make or lose money?" This tells you nothing.
+
+Suppose a session shows: 200 fills, net gpnl −$3.00. That is the total. But you do not know:
+- Were fills toxic at the 100ms horizon and we recovered at 5s? (Short-term adverse, long-term ok)
+- Were fills fair at 100ms but inventory carried against us over 30 minutes? (Not a fill problem — an inventory problem)
+- Were half the fills clean and half catastrophically toxic? (Average masks the tail)
+- Was it two assets doing well and one destroying everything? (Asset-level mask)
+
+Without markouts, the answer to "what's causing the loss?" is a guess. With markouts, it becomes a calculation.
+
+---
+
+**Building Layers — From Simple to Professional**
+
+**Layer 1a: Average markout per horizon**
+
+The first step: compute the average post-fill price move at each horizon for every fill in a session.
+
+```
+SOL bid fill at 100.00
+  t+100ms: price = 99.85  →  markout = -15 ticks (adverse)
+  t+500ms: price = 99.80  →  markout = -20 ticks
+  t+1s:    price = 99.82  →  markout = -18 ticks
+  t+5s:    price = 99.95  →  markout = -5 ticks
+```
+
+Average over 200 fills:
+```
+  avg_100ms: -8 ticks   ← was the fill sniped? 
+  avg_500ms: -6 ticks   ← short-term informed flow
+  avg_1s:    -4 ticks   ← flow persistence
+  avg_5s:    -1 tick    ← inventory carry pressure
+```
+
+If half-spread = 5 ticks:
+```
+fill_ev = half_spread - adverse_markout
+at 100ms: 5 - 8 = -3 ticks  ← negative EV per fill at this horizon
+at 5s:    5 - 1 = +4 ticks  ← positive EV if held to 5s
+```
+
+This tells you: the fills are being sniped at 100ms but market mean-reverts by 5s. The problem is not fills being toxic — it is that the engine cannot hold inventory to 5s without being stopped out by skew pressure or inventory limits.
+
+**What this still misses**: the average may be distorted. 190 clean fills and 10 catastrophic fills would show an "average" that looks fine while hiding a tail loss pattern. And you have no idea whether the 10 catastrophic fills had a detectable signal beforehand.
+
+---
+
+**Layer 1b: Bucketing fills by signal state (VPIN buckets)**
+
+The average markout is a start. The professional question is: does your toxicity signal actually predict which fills will be toxic?
+
+Divide all fills into three buckets based on what the VPIN signal was at the moment of fill:
+- **Quiet regime** (VPIN < 0.3): low informed flow, mostly noise
+- **Normal regime** (VPIN 0.3–0.7): mixed, some directional pressure
+- **Informed regime** (VPIN > 0.7): strong directional flow, high toxic risk
+
+Now compute average markout per bucket:
+
+```
+                  avg_100ms_markout    avg_1s_markout
+Quiet regime:        -2 ticks             -1 tick     ← nearly clean
+Normal regime:       -6 ticks             -4 ticks
+Informed regime:    -18 ticks            -12 ticks    ← deeply toxic
+```
+
+What this tells you:
+1. The informed-regime fills are terrible — -18 ticks at 100ms with 5 tick half-spread = -13 tick net loss per fill in that bucket
+2. The quiet-regime fills are nearly profitable — -2 ticks adverse vs 5 tick half-spread = +3 tick net
+3. The VPIN signal actually predicts toxicity: markouts clearly separate across buckets
+
+This means: if you widen spread or reduce size only in the informed regime, you stop the bleeding without touching the clean fills. The signal is usable.
+
+But what if the buckets do NOT separate?
+
+```
+                  avg_100ms_markout
+Quiet regime:        -7 ticks
+Normal regime:       -8 ticks
+Informed regime:     -9 ticks   ← almost no separation
+```
+
+The VPIN signal is not predicting toxic fills on this asset. Widening spread based on VPIN here helps nothing — you would widen on clean fills and miss the actual toxic ones. For this asset, VPIN is noise. You need a different signal, a different horizon, or a different strategy.
+
+Bucketing is how you know whether your toxicity signals are actually working — not whether they are theoretically correct, but whether they separate observed outcomes in practice.
+
+**What this still misses**: you are looking at your own historical session data. You are learning which fills were toxic after the fact. You are not yet using this learning to adjust the spread in real time while the session is running.
+
+---
+
+**Layer 1c: Per-asset markout distributions as a live model**
+
+This is the professional standard. Instead of running markout analysis once after a session ends, the engine maintains a live distribution of past markouts per asset and uses it to set spreads continuously.
+
+Concretely: the engine tracks the last N fills for SOL and maintains a rolling estimate of average adverse move at 100ms and 1s horizons. Each new fill updates the estimate. The spread is then set as:
+
+```
+half_spread ≥ expected_adverse_move_at_1s × safety_margin
+```
+
+If the last 50 SOL fills show an average 1s adverse move of 8 ticks, the engine widens SOL spread to at least 8–10 ticks. If the distribution starts improving (fills become less toxic), the spread can tighten. If the distribution worsens (regime shift, more informed flow), the spread automatically widens.
+
+**The shift response**: this is the critical behaviour. If the distribution of adverse moves suddenly shifts — say, the last 20 fills start showing -20 ticks at 100ms when the historical norm is -5 ticks — the engine detects this shift and widens spread within the same session. It does not wait for the session to end and a researcher to run analysis.
+
+A concrete scenario:
+```
+SOL: 10:00–10:30 — calm regime, avg 100ms markout = -3 ticks
+SOL: 10:30–10:35 — someone starts accumulating aggressively
+  fill 1: -8 ticks
+  fill 2: -12 ticks
+  fill 3: -15 ticks
+  fill 4: -18 ticks
+```
+
+Distribution shifts. By fill 4, the live model detects a regime change. Spread widens automatically — before fill 5 happens. The engine is not reacting to fill 5 being bad. It is pricing in the fact that the distribution has shifted.
+
+Without live markout distributions, the spread stays the same through fills 1–100. You only find out 30 minutes later that the regime had shifted at fill 4, and by then the damage is done.
+
+---
+
+**What Each Layer Sees vs Misses**
+
+| Method | What it sees | What it misses |
+|---|---|---|
+| Session gpnl total | Whether we made or lost money | Why, which fills, which assets, which horizon |
+| Average markout per horizon | Whether fills are toxic on average | Tail risk, signal quality, regime sensitivity |
+| VPIN-bucketed markouts | Whether signal predicts toxic fills | Real-time feedback — this is post-session analysis |
+| Live markout distribution | Regime shifts within a session | Nothing at the individual fill level — it is aggregate |
+| Live distribution + signal buckets | Both regime and signal quality, continuously | Gaps in coverage when fills are sparse (thin assets) |
+
+---
+
+**Professional Standard — Jane Street / Citadel Level**
+
+| Component | What they do |
+|---|---|
+| Markout horizons | Multiple horizons: 10ms, 100ms, 500ms, 1s, 5s, 30s — each measured separately |
+| Signal-state bucketing | Fills are tagged at fill time with full signal state (VPIN, OFI, imbalance, regime) |
+| Live distribution model | Rolling distribution per asset × signal-state bucket, updated each fill |
+| Spread setting | Half-spread ≥ live-modelled expected adverse move at 1s horizon, with safety margin |
+| Automatic regime response | When distribution shifts beyond threshold → spread widens before next fill, not after |
+| Attribution | Every fill attributed: spread_captured / adverse_markout / inventory_carry — distinguishable in real-time |
+
+Key property: markout analysis is not a post-session diagnostic. It is a continuous live model that drives spread decisions in the same session. The engine learns what this asset's fills look like today and prices accordingly — not based on last month's calibration.
+
+---
+
+**Summary**
+
+| | |
+|---|---|
+| **What it is** | Price movement against the fill direction at fixed time horizons — the direct measurement of adverse selection cost |
+| **Why it matters** | Without markouts, you cannot know whether spread covers adverse risk, whether signals work, or why gpnl is negative |
+| **Core equation** | fill_ev = half_spread − adverse_markout; negative = losing money on every fill |
+| **Signal validation** | Bucket fills by VPIN/signal state; if buckets do not separate — signal is not predicting toxicity on that asset |
+| **Professional standard** | Live rolling distribution per asset, auto-widens spread when distribution shifts — not post-session analysis |
+
+---
+
+### Layer 2 — Adverse Selection / TailScore
+
+**Status: ✅ Done**
+
+---
+
+**What It Is**
+
+Layer 1 measured what happened after a fill — backward-looking damage assessment. Layer 2 is the forward-looking version: can you predict which fills will be toxic before they happen, and price them accordingly?
+
+If you can — even partially — you stop losing money on the worst fills instead of just measuring the loss afterward. This is the biggest single profitability lever in market making.
+
+---
+
+**Why the Naive Approach Fails**
+
+The naive approach: set one spread for the whole session. Every fill gets the same half-spread. Clean fills earn spread. Toxic fills lose more than spread. Hope the average works out.
+
+Real-world analogy: a taxi driver who charges every passenger the same flat rate regardless of destination. Short rides to safe neighbourhoods subsidise dangerous 3am rides. Eventually the dangerous rides bankrupt the business.
+
+In market making: quoting the same spread regardless of whether conditions look calm or informed is charging the same price for completely different risk levels. The fix is not a wider spread everywhere — that kills fill rate on the clean fills. The fix is a wider spread specifically when a toxic fill is likely, and a tighter spread when conditions are calm.
+
+That requires predicting toxicity before the fill.
+
+---
+
+**Layer 2a — p_tox: Pricing the Probability**
+
+Three signals, each detecting toxicity from a different angle:
+
+**Signal 1 — Flow toxicity (leading signal)**
+```
+flow     = EWMA(trade_sign)      +1 per aggressive buy, -1 per aggressive sell
+tox_flow = |flow|                how one-sided is recent aggressive flow?
+```
+Fires before price moves — detects the pattern of who is trading.
+
+**Signal 2 — Drift toxicity (realized signal)**
+```
+drift     = (mid_after_fill - fill_price) × fill_side
+tox_drift = max(0, -drift)       counts only adverse moves, not favourable ones
+```
+Backward-looking confirmation — recent fills actually hurt, not just theory.
+
+**Signal 3 — Volatility risk (uncertainty signal)**
+```
+tox_vol = sigma_short / sigma_long
+```
+When short-term volatility exceeds long-term volatility, fair value is jumping around. Even without directional flow, an unstable fair value increases expected adverse move on any fill.
+
+Combined:
+```
+toxicity = w1 × tox_flow + w2 × tox_drift + w3 × tox_vol
+EAM      = k_tox × toxicity
+EV       = half_spread − EAM
+```
+
+**What this still misses**: p_tox gives probability of a toxic fill. It says nothing about how bad the fill will be when it happens. A 70% chance of -2 ticks and a 70% chance of -50 ticks are treated identically. They are not.
+
+---
+
+**Layer 2b — TailScore: Adding Severity**
+
+```
+TailScore = p_tox × CVaR99_magnitude
+delta_adv = k_tox × p_tox × q̂99    ← drives spread widening directly
+```
+
+Concrete example. Two assets, same p_tox:
+```
+LINK: p_tox = 0.6,  CVaR99 = -8 ticks   →  TailScore = 4.8
+SUI:  p_tox = 0.6,  CVaR99 = -40 ticks  →  TailScore = 24.0
+```
+
+Same toxicity probability. Completely different tail risk. SUI's thin book means when someone sweeps through, the move is violent. A system using only p_tox treats them identically. TailScore sets a much wider SUI spread and reduces size significantly.
+
+TailScore drives spread continuously — not a binary gate. High TailScore → spread widens proportionally, size reduces. The engine always quotes; it just prices the risk correctly.
+
+---
+
+**Layer 2c — Toxic Fill Clustering**
+
+Toxic fills do not arrive randomly — they cluster. An informed trader does not send one order. They have a position to build before price moves. They send 10, 50, 100 orders in the same direction over minutes.
+
+This means: after one toxic fill, the probability of the next fill being toxic is higher than baseline. The trader is still out there.
+
+```
+Fill 1: bid fill, -12 tick adverse at 100ms
+Fill 2: bid fill, -15 tick adverse at 100ms  ←  still the same trader?
+Fill 3: bid fill, -18 tick adverse at 100ms  ←  almost certainly yes
+```
+
+A naive system treats each fill independently — p_tox resets to baseline after each fill. A professional system detects the cluster: three adverse fills in a row is a signal. p_tox should rise after each adverse fill, not reset.
+
+This is why tox_drift exists as a signal — it captures the fact that recent fills were adversely selected and keeps that information alive in the model, decaying slowly via EWMA. One bad fill raises tox_drift → raises p_tox → raises spread for the next fill.
+
+---
+
+**Why Global Thresholds Fail**
+
+One global TailScore threshold applied to all assets is structurally wrong:
+```
+SUI:  thin book, violent moves, CVaR99 = -40 ticks
+AAVE: deep book, slow moves,   CVaR99 = -6 ticks
+```
+
+Calibrate to AAVE → SUI will blow through the threshold on every regime shift. Calibrate to SUI → AAVE almost never quotes. Each asset needs its own CVaR99 baseline, its own TailScore threshold, its own signal sensitivity.
+
+---
+
+**What Each Layer Sees vs Misses**
+
+| Method | What it sees | What it misses |
+|---|---|---|
+| Fixed spread, no toxicity model | Simple to implement | Same price for different risk levels — toxic fills bleed the clean ones |
+| p_tox only | Probability of toxic fill | Severity — 70% toxic at -2 ticks vs -50 ticks treated identically |
+| TailScore (p_tox × CVaR99) | Probability AND severity per asset | Clustering — treats each fill as independent |
+| TailScore + clustering detection | Probability, severity, temporal pattern | Per-asset calibration — global thresholds wrong for thin vs deep books |
+| Full system: all four layers | All of the above | Nothing structural — this is the professional standard |
+
+---
+
+**Professional Standard — Jane Street / Citadel Level**
+
+| Component | What they do |
+|---|---|
+| Toxicity signals | Flow + drift + vol combined; weights calibrated per asset, not global |
+| Severity measurement | CVaR99 per asset computed from live session data, updated continuously |
+| TailScore | Drives spread and size continuously — not a binary gate |
+| Clustering | tox_drift EWMA decays slowly — one adverse fill raises p_tox for the next fill |
+| Per-asset calibration | Each asset has its own CVaR99 baseline and TailScore threshold |
+| Response | Continuous: spread widens proportionally, size reduces — never a hard stop |
+
+Key property: the system never stops quoting. When TailScore is extreme it quotes with a very wide spread and minimal size — not zero. Removing liquidity entirely is an institutional anti-pattern.
+
+---
+
+**Summary**
+
+| | |
+|---|---|
+| **What it is** | Forward-looking prediction of fill toxicity — probability × severity — used to price risk before the fill arrives |
+| **Why it matters** | Stops the worst fills from bleeding out the clean ones; biggest single profitability lever |
+| **Core equation** | TailScore = p_tox × CVaR99; delta_adv = k_tox × p_tox × q̂99 drives spread |
+| **Clustering** | Adverse fills raise p_tox for subsequent fills via tox_drift EWMA — not independent events |
+| **Professional standard** | Per-asset CVaR99 live model + per-asset TailScore threshold + continuous proportional spread response |
+
+---
+---
+
+## Layer 3 — Latency / Stale Quote Exposure
+
+### What It Is
+
+A stale quote is a resting order on the exchange whose price no longer reflects fair
+value — because fair value moved on another venue, but the cancel has not yet reached
+the exchange.
+
+The stale window is the gap between when price moves and when the cancel is confirmed:
+```
+t=0ms:   fair value shifts on Binance
+t=Xms:   engine detects the shift, sends cancel to Bybit
+t=Yms:   exchange confirms cancel (cancel ack)
+
+Stale window = t=0ms to t=Yms
+```
+
+During this window the quote is live and fillable at the wrong price. An arbitrageur
+watching both venues fires an aggressive order the moment they see the divergence —
+often within 1ms. If their order arrives at the exchange before the cancel, they fill
+at the stale price and immediately hedge on Binance at the new fair value.
+
+This loss looks identical to informed flow in markout data. Both produce large adverse
+moves after a fill. The cause is completely different — and so is the fix.
+
+---
+
+### Why the Naive Approach Fails
+
+Naive: set a spread and assume any adverse fill was from informed flow. Blame the
+counterparty for having an edge.
+
+Analogy: a shop owner puts yesterday's price tag on inventory and goes to the back
+room. Customers buy everything at below-current value. The owner returns and blames
+"smart customers who knew prices would rise." They knew nothing. He left a stale price
+visible and did not update it fast enough.
+
+The arbitrageur needs no information advantage. They just read two venues simultaneously
+and act faster than the cancel travels to the exchange.
+
+---
+
+### The Three Components of the Stale Window
+
+```
+Total stale window = detection lag + network RTT + exchange processing time
+```
+
+**Detection lag**: how long before the engine notices fair value shifted from the
+incoming L2 update. Depends on engine processing speed.
+
+**Network RTT**: how long the cancel request takes to travel to the exchange and
+for the ack to return. At AWS Tokyo: ~22ms round trip to Bybit/BitMEX. At old
+Delta India setup: 750–1000ms — stale window was 75× larger.
+
+**Exchange processing time**: how long the exchange queues and processes the cancel
+before matching is updated. This is the same for the market maker's cancel and the
+arb's aggressive order — whoever arrives first at the exchange queue wins.
+
+---
+
+### Quantifying Stale Fill Loss
+
+```
+stale_loss = P(fill before cancel ack) × E[adverse move in the stale window]
+```
+
+Concrete example at AWS Tokyo (22ms cancel ack):
+```
+Fair value moves +20 ticks on Binance
+Stale ask on Bybit = 15 ticks below new fair value
+
+P(fill in 22ms window) ≈ 0.85   (quote is cheap enough that arb fires immediately)
+E[adverse move] = 18 ticks
+
+stale_loss per event = 0.85 × 18 = 15.3 ticks
+```
+
+At 5 such events per session: 76.5 ticks of pure stale loss — before any informed
+flow is counted.
+
+---
+
+### Why 1ms Latency Difference Is Enough
+
+Even a 1ms advantage lets the arb hunt stale quotes:
+
+```
+t=0ms:  Binance moves. Both arb and engine detect it simultaneously.
+t=0.5ms: Arb (co-located at Bybit) fires aggressive order → arrives at Bybit
+t=10ms:  Engine (AWS Tokyo) sends cancel → arrives at Bybit
+
+Gap = 9.5ms. Arb wins the race by 9.5ms.
+```
+
+The arb does not predict direction. They see a price difference already existing
+across two venues and lock it in by filling both legs simultaneously:
+- Leg 1: buy on Bybit at stale price
+- Leg 2: sell on Binance at new fair value
+
+Profit is locked in by the cross-venue price difference. No directional bet.
+Fees only kill the trade if the move is smaller than ~2–3 ticks — larger moves
+are always profitable for the arb regardless of fees.
+
+---
+
+### Quote Age as the Diagnostic Signal
+
+Without tracking quote age at fill time, stale losses and informed losses look
+identical in markout analysis. Both show large adverse moves after a fill.
+
+The separator is `fill_order_age_ms` — how long the quote had been resting at the
+exchange before it was filled:
+
+```
+Low age fills  (< 50ms):  avg adverse markout = -6 ticks  → informed flow candidate
+High age fills (> 500ms): avg adverse markout = -22 ticks → stale pickoff candidate
+```
+
+If the large losses cluster at high quote age → the problem is cancel latency and
+repricing speed, not informed flow. Improving the toxicity model here helps nothing.
+Reducing cancel latency or tightening `max_quote_age_ms` is the fix.
+
+---
+
+### How Faster Cancel Speed Changes Spread Economics
+
+Faster cancel speed → smaller stale window → smaller expected stale loss → lower
+spread floor required to remain EV-positive.
+
+```
+AWS Tokyo (22ms cancel ack):    spread floor contribution from stale loss ≈ 3–5 ticks
+Delta India (800ms cancel ack): spread floor contribution from stale loss ≈ 30–50 ticks
+```
+
+Every millisecond reduction in cancel ack latency is worth a specific number of ticks
+in spread tightening. This is why infrastructure investment (co-location, kernel-bypass
+networking) translates directly into competitive quoting — not speed for its own sake.
+
+---
+
+### Sees vs Misses
+
+| Method | What it sees | What it misses |
+|---|---|---|
+| No latency tracking | Nothing — all adverse moves look like informed flow | Stale losses completely invisible |
+| Cancel ack latency only | How long the stale window is | Whether fills actually happen in that window |
+| Quote age at fill | Which fills happened on stale quotes | Why the quote was stale (detection lag vs RTT vs exchange) |
+| Full decomposition | Detection lag + RTT + exchange processing separately | Nothing structural |
+
+---
+
+### Professional Standard — Jane Street / Citadel Level
+
+| Component | What they do |
+|---|---|
+| Detection speed | Sub-millisecond — every L2 update triggers immediate fair value recalculation |
+| Cancel speed | Co-located or kernel-bypass — cancel ack in < 1ms |
+| Quote age tracking | Every fill tagged with exact quote age at fill time |
+| Stale loss attribution | Fills split: stale quote loss vs informed flow — different fixes for each |
+| Spread floor | Explicitly derived from measured stale window: `spread ≥ P(fill_before_cancel_ack) × E[adverse_move]` |
+| Infrastructure investment | Cancel speed improvement = direct spread tightening = direct EV improvement |
+
+Key property: professionals do not treat latency as a background constraint. They
+measure it, attribute losses to it specifically, and invest in reducing it because
+the economics are direct.
+
+---
+
+### Summary
+
+| | |
+|---|---|
+| **What it is** | Fill risk from a quote whose price is stale because fair value moved faster than the cancel reached the exchange |
+| **Why it matters** | Stale fills look identical to informed flow — wrong diagnosis leads to wrong fix |
+| **Stale window** | Detection lag + network RTT + exchange processing — all three must be minimised |
+| **Key diagnostic** | Quote age at fill time separates stale losses from informed flow losses |
+| **Core equation** | stale_loss = P(fill before cancel ack) × E[adverse move in stale window] |
+| **Spread implication** | Faster cancel speed directly lowers the spread floor — infra investment = EV improvement |
+| **Professional standard** | Sub-ms detection, measured cancel ack latency, explicit stale loss attribution, spread floor set from measured latency |
+
+---
+---
+
+## Layer 4 — Spread vs Adverse Move
+
+### What It Is
+
+The spread is the only revenue a market maker earns. The adverse move — the price
+movement against you after a fill — is the primary cost. If the adverse move exceeds
+the half-spread captured at fill time, every fill is a loss.
+
+```
+fill_ev = half_spread_captured − adverse_markout
+```
+
+Getting the spread right means setting it wide enough to cover the adverse move in
+expectation, while keeping it tight enough that fills actually happen. Too tight →
+every fill bleeds. Too wide → no fills, no revenue.
+
+---
+
+### Why the Naive Approach Fails
+
+Naive: pick a spread that "looks competitive" by watching what others quote.
+
+Analogy: a taxi driver sets his fare by looking at what other taxis charge, without
+knowing what his fuel costs that day. When fuel is cheap, he profits. When fuel spikes,
+every ride loses money — but the meter still reads the same number.
+
+In market making: adverse move is the fuel cost. It changes every session, every
+asset, every regime. A fixed spread that works in quiet markets bleeds in volatile
+or informed-flow markets. You need a spread that responds to the actual cost of
+being filled right now.
+
+---
+
+### Layer 1 — Half-Spread and the Round-Trip Problem
+
+At fill time you capture half the spread — not the full spread. If you quote
+bid=99, ask=101, and the ask fills, you earned 1 tick (half of the 2-tick spread).
+The other half only arrives if the bid also fills later. That second leg is never
+guaranteed.
+
+```
+fill_ev = half_spread − adverse_markout
+
+Example:
+  half_spread = 1 tick
+  adverse_markout at 1s = 3 ticks
+  fill_ev = 1 − 3 = −2 ticks per fill
+```
+
+You captured your spread and still lost 2 ticks. This is not bad luck — it is
+structural negative EV that repeats on every informed fill.
+
+**What this still misses**: adverse move is not constant. It is much higher during
+informed flow and volatile regimes. A single average spread cannot cover a
+distribution that has fat tails.
+
+---
+
+### Layer 2 — Spread Floor
+
+The spread floor is the minimum spread below which EV is structurally negative
+regardless of any signal:
+
+```
+spread_floor = 2 × E[adverse_markout]
+```
+
+The factor of 2 comes from the relationship: half-spread must cover the full adverse
+move, and half-spread is half the total spread.
+
+Per asset — because adverse markout differs by book depth:
+```
+SUI:  avg adverse markout at 1s = 4 ticks → floor = 8 ticks
+AAVE: avg adverse markout at 1s = 2 ticks → floor = 4 ticks
+LINK: avg adverse markout at 1s = 3 ticks → floor = 6 ticks
+```
+
+Quoting SUI at a 5-tick spread when the floor is 8 ticks means every fill is
+negative EV in expectation. No signal improvement fixes this — the floor must be
+raised first.
+
+**What this still misses**: the floor is computed from an average adverse move.
+Adverse move is much higher during volatile regimes — the floor must scale with
+current conditions, not historical averages.
+
+---
+
+### Layer 3 — Volatility-Adjusted Spread
+
+When price is jumping, adverse moves are larger. The spread floor must scale:
+
+```
+spread_required = spread_floor_base × vol_multiplier
+vol_multiplier  = current_sigma / baseline_sigma
+```
+
+Concrete example — SUI across regimes:
+```
+Quiet  (vol = 0.8× baseline): spread = 8 × 0.8 = 6.4 ticks
+Normal (vol = 1.0× baseline): spread = 8 × 1.0 = 8.0 ticks
+Active (vol = 2.0× baseline): spread = 8 × 2.0 = 16 ticks
+Extreme(vol = 4.0× baseline): spread = 8 × 4.0 = 32 ticks
+```
+
+The 32-tick spread in an extreme event looks very wide. It is correct — the cost of
+being filled at that moment is genuinely that high. Quoting tight during an extreme
+vol event is offering cheap options to anyone watching.
+
+**What this still misses**: volatility and informed flow are correlated but not the
+same. Adverse move is worst specifically when informed traders are active — not just
+when vol is high. The spread needs to respond to toxicity specifically, not just vol.
+
+---
+
+### Layer 4 — Full Spread: Floor + Vol + Toxicity
+
+The complete spread formula:
+
+```
+spread_total = spread_floor(asset) × vol_multiplier + 2 × delta_adv
+
+delta_adv = k_tox × p_tox × q̂99
+```
+
+Where:
+- `spread_floor(asset)` — minimum from average adverse markout. Per asset. Static-ish.
+- `vol_multiplier` — scales floor for current volatility. Live, updates every cycle.
+- `delta_adv` — additional width from toxicity state. p_tox is the probability of
+  informed flow (from Layer 2); q̂99 is the severity in ticks; k_tox scales the response.
+
+Three components, each independent, each necessary:
+
+```
+State A (quiet, low p_tox):
+  p_tox = 0.2, q̂99 = 5 ticks, vol = 1.0×
+  delta_adv = 0.5 × 0.2 × 5 = 0.5 ticks
+  spread = 8 + 2(0.5) = 9 ticks
+
+State B (informed, high p_tox):
+  p_tox = 0.8, q̂99 = 12 ticks, vol = 1.5×
+  delta_adv = 0.5 × 0.8 × 12 = 4.8 ticks
+  spread = 8×1.5 + 2(4.8) = 12 + 9.6 = 21.6 ticks
+```
+
+State B spread is more than double State A — not because vol changed much, but
+because p_tox (probability of informed flow, Layer 2) and q̂99 (severity of the
+worst fills, also Layer 2) both rose. The spread is pricing the specific risk
+of each fill, not average risk.
+
+---
+
+### The Fill Rate Trade-Off
+
+Spread too wide → fills stop. `fill_ev` per fill can be positive but revenue per
+unit time collapses:
+
+```
+EV_per_unit_time = fill_rate × fill_ev
+                 = fill_rate × (half_spread − adverse_markout)
+```
+
+Doubling the spread from 8 to 16 ticks might improve `fill_ev` per fill from
+0.5 ticks to 6 ticks — but if fill rate drops from 10/hour to 0.5/hour, total
+revenue falls from 5 ticks/hour to 3 ticks/hour. Wider is not always better.
+
+The optimal spread maximises EV per unit time, not EV per fill. This requires
+modelling how fill rate declines as spread increases — which depends on queue
+depth, volatility, and how competitive other market makers are at each level.
+
+---
+
+### Sees vs Misses
+
+| Method | What it sees | What it misses |
+|---|---|---|
+| Fixed spread | Simple rule | Adverse move varies — same spread bleeds in volatile sessions |
+| Spread floor from avg adverse move | Structural minimum per asset | Floor must scale with vol — static floor bleeds in volatile regimes |
+| Vol-adjusted floor | Covers regime shifts | Vol ≠ informed flow — toxic fill spikes need toxicity signal |
+| Full: floor + vol + toxicity (p_tox × q̂99) | Per-fill risk priced continuously | Fill rate trade-off — too wide = zero fills = zero revenue |
+| Joint EV/time optimisation | Both EV per fill and fill rate | Nothing structural — professional standard |
+
+---
+
+### Professional Standard — Jane Street / Citadel Level
+
+| Component | What they do |
+|---|---|
+| Spread floor | Per asset, derived from rolling fill markout distribution — updated after every fill |
+| Volatility adjustment | Live sigma estimate; spread scales automatically each cycle |
+| Toxicity adjustment | p_tox × CVaR99 (TailScore) drives continuous delta_adv — separate from vol |
+| Fill rate modelling | Spread set to maximise EV per unit time, not EV per fill |
+| Joint optimisation | Avellaneda-Stoikov reservation spread — balances adverse selection cost against fill rate |
+| Update cadence | Every L2 update — spread is never static within a session |
+
+Key property: every component is measured from live session data. The floor is not
+guessed — it is computed from recent fill markouts. The vol multiplier is a live
+ratio. p_tox and q̂99 are live model outputs. Nothing is static config.
+
+---
+
+### Summary
+
+| | |
+|---|---|
+| **Core equation** | fill_ev = half_spread − adverse_markout; must be positive in expectation |
+| **Spread floor** | 2 × E[adverse_markout] per asset — minimum below which EV is structurally negative |
+| **Volatility** | Spread scales with live sigma — static floor bleeds in volatile regimes |
+| **Toxicity** | delta_adv = k_tox × p_tox × q̂99 adds toxicity-driven width — continuous, not binary |
+| **Fill rate** | Spread too wide = no fills = no revenue; optimal spread maximises EV per unit time |
+| **Professional standard** | Per-asset floor from live markouts + vol multiplier + TailScore delta_adv + fill rate joint optimisation |
+
+---
+---
+
+## Layer 4.5 — Queue / Fill Quality
+
+### What It Is
+
+Queue position determines which fills you get, not just whether you fill. At any
+price level, orders sit in a FIFO queue — the exchange fills them front to back as
+aggressive orders arrive. Your position in that queue controls whether your fill
+comes from a small uninformed order or from the tail end of a large informed sweep.
+
+The cleanest fills go to whoever is at the front of a lightly-loaded queue.
+The worst fills go to whoever is at the back of a queue that just got swept entirely.
+
+---
+
+### Why the Naive Approach Fails
+
+Naive: always quote at BBO — tightest price = most fills = most revenue.
+
+Analogy: a shopkeeper sets up at the busiest market corner. Maximum footfall —
+but this corner attracts every pickpocket too. A stall two streets back has fewer
+customers but none of them steal. The busiest corner is not automatically the most
+profitable corner.
+
+BBO fills are the busiest corner. You fill the most — but the fills that actually
+happen at BBO are disproportionately from informed traders and sweepers. Going one
+tick deeper selects for committed, larger aggressors who had to consume the entire
+BBO level first. Fewer fills, but structurally cleaner.
+
+---
+
+### Layer 1 — What Queue Position Controls
+
+At price level 101 (ask side), orders queue in FIFO order:
+```
+Position 1: 200 lots  ← fills first
+Position 2: 150 lots  ← fills second
+Position 3: YOUR 1 lot
+Position 4: 300 lots  ← fills last
+```
+
+A 360-lot aggressive buy order consumes positions 1, 2, and your 1 lot. You filled
+— but so did 350 lots before you in a single aggressive order. That aggressor was
+committed enough to send 360 lots. P(toxic fill) ≈ 1.
+
+If only 5 lots arrive and fill position 1 partially, you do not fill. But that
+aggressor was small — probably uninformed. You missed a clean fill but avoided
+nothing bad, because the small aggressor would not have reached position 3.
+
+**The key insight**: easy fills (low queue ahead, BBO) disproportionately come from
+sweeps. Hard fills (deep queue, away from BBO) are cleaner on average.
+
+---
+
+### Layer 2 — BBO vs Deep Fill Trade-Off
+
+```
+BBO quote (101):    P(fill) high  |  Fills on ANY aggressor including small uninformed
+1-tick deep (102):  P(fill) lower |  Fills only when aggressor sweeps through 101 first
+2-ticks deep (103): P(fill) low   |  Fills only on large committed sweeps
+```
+
+Going deeper selects for larger, more informed aggressors. But a 2-tick-deeper
+quote also earns 2 extra ticks of spread. The adverse markout is roughly similar
+(the same informed trader caused the sweep) — but spread capture is higher.
+
+This is why institutional market makers often quote slightly inside BBO rather
+than at BBO — the fill quality improvement outweighs the fill rate reduction when
+the spread premium is captured.
+
+---
+
+### Layer 3 — Cancel/Replace Destroys Queue Position
+
+Every cancel+replace at the same price resets you to the back of the FIFO queue:
+
+```
+t=0:   Place ask at 101. Queue: [500 lots ahead, YOU]
+t=10s: Cancel + replace at 101 (same price).
+       Queue: [500 lots + 10s of new arrivals ahead, YOU at the back]
+```
+
+The replacement was meant to keep your price fresh. Instead it destroyed position.
+An engine that cancels and replaces every 200ms to track mid price is perpetually
+at the back of the queue — every fill is a sweep fill because only sweeps reach
+the back of the queue.
+
+`min_quote_lifetime_ms` in KCMME enforces a floor on how fast quotes can be
+replaced — specifically to prevent this compounding queue-destruction pattern.
+
+---
+
+### Layer 4 — Sweep Fill Detection
+
+The clearest toxic fill signal available without any model: being filled at the
+same time as the entire level.
+
+```
+Sweep fill:
+  Level 101 had 600 lots. You were at position 400.
+  Aggressive buyer consumed all 600 lots in one order.
+  After fill: BBO is now 102/103. The 101 level is gone.
+  Signal: you were the tail of an informed sweep. Adverse markout will be severe.
+
+Non-sweep fill:
+  Level 101 had 600 lots. You were at position 2.
+  Aggressive buyer consumed 5 lots and left.
+  After fill: BBO is still 101/102. 595 lots remain at 101.
+  Signal: small, probably uninformed aggressor. Fill is likely clean.
+```
+
+Tracking whether the level was swept at fill time separates toxic from clean fills
+structurally — independent of post-fill drift measurement.
+
+---
+
+### Layer 5 — Queue-Aware P(fill) Model
+
+The full model combines queue position with fill probability:
+
+```
+P(fill) = f(queue_volume_ahead, own_qty, aggressor_arrival_rate, vol)
+EV      = P(fill) × (half_spread − E[adverse_markout | fill at this queue position])
+```
+
+Key insight (Cont-Kukanov-Stoikov 2011): P(fill) and fill quality move in opposite
+directions. The easiest fills to get (front of queue at BBO) have the highest
+adverse markout. The hardest fills (deep, large queue ahead) are the cleanest.
+
+The optimal quote placement maximises EV — not P(fill) alone, not spread alone,
+but their product adjusted for expected fill quality at each queue depth.
+
+---
+
+### Sees vs Misses
+
+| Method | What it sees | What it misses |
+|---|---|---|
+| Always BBO | Maximum fill rate | Fills are disproportionately sweeps — most toxic |
+| Quote 1–2 ticks deep | Fewer but cleaner fills | Still no queue position — don't know how far back |
+| Track queue volume ahead | Know position | Can't compute P(fill) without aggressor size distribution |
+| Cancel/replace on every tick | Fresh price tracking | Destroys queue position — perpetually at the back |
+| Queue-aware model (CKS 2011) | P(fill) by depth + fill quality by position | Nothing structural |
+
+---
+
+### Professional Standard — Jane Street / Citadel Level
+
+| Component | What they do |
+|---|---|
+| Queue position tracking | Estimated from L2 snapshots — volume ahead tracked per symbol |
+| P(fill) model | CKS 2011 — fill probability as function of queue depth and aggressor rate |
+| Fill quality by position | Adverse markout modelled separately for BBO vs deep fills |
+| Cancel/replace discipline | Minimum lifetime enforced — queue position preserved |
+| Sweep detection | Fill + level-swept tagged — separated from non-sweep fills in markout analysis |
+| Spread by queue depth | Deeper quotes get wider spreads — same EV target at each depth |
+
+---
+
+### Summary
+
+| | |
+|---|---|
+| **What it is** | Queue position determines which fills you get — earlier = cleaner, later = sweep tail |
+| **BBO vs deep** | BBO = high fill rate + toxic; deeper = lower fill rate + cleaner + wider spread capture |
+| **Cancel/replace cost** | Every cancel+replace sends you to back of queue — destroys position, guarantees worst fills |
+| **Sweep fill** | Level consumed = tail of informed sweep; near-certain severe adverse move follows |
+| **P(fill) model** | P(fill) and fill quality move in opposite directions — must be modelled jointly |
+| **Professional standard** | Queue-aware P(fill) + sweep detection + min lifetime + spread calibrated by queue depth |
+
+---
+---
+
+## Layer 5 — Inventory Carry, Single Venue
+
+### What It Is
+
+Every position you hold has a carry cost: the expected mark-to-market loss from
+price moving against the position while you hold it. A market maker with inventory
+is no longer a neutral price-setter — they have directional exposure. The spread
+must compensate for that exposure, and the quotes must continuously work to reduce it.
+
+---
+
+### Why the Naive Approach Fails
+
+Naive: quote symmetrically around fair value regardless of inventory. Half-spread
+applied equally on both sides every cycle.
+
+Analogy: a market vendor quotes the same buy and sell price for umbrellas from 9am
+to 5pm regardless of how many he has. By 4pm he holds 200 units, the market closes
+in an hour, and he is forced to sell all 200 to a wholesaler at a 30% discount.
+Every individual price was right. The session P&L is negative because he never
+adjusted his buying interest as his stock grew.
+
+A market maker does the same when ignoring inventory: every fill captures the spread,
+p_tox — the probability the fill was from informed flow — is acceptable, the 100ms
+adverse markout is within the half-spread. But 80 fills are all on the same side.
+Position is now 80 contracts long. Asset drifts 3 ticks against it over the session.
+Net carry loss: 240 tick-equivalents. All from holding, not from being picked off.
+
+---
+
+### Layer 1 — What Carry Actually Costs
+
+Every tick a position is held, it is exposed to price movement.
+
+```
+carry_exposure ∝ inventory × volatility × time_held
+```
+
+Example: long 10 LINK contracts, σ = 0.02 ticks/sec, held 30 minutes (1800 seconds):
+```
+expected_price_move = 0.02 × √1800 ≈ 0.85 ticks
+carry_exposure      = 10 × 0.85    = 8.5 tick-equivalents
+```
+
+If the half-spread is 1 tick, carry eats 8.5 ticks of expected P&L per session at
+normal fill rates. The adverse markout from Layer 1 captures carry within 100ms of
+the fill. Inventory carry is the same mechanism at the session scale — a slow bleed
+that cumulates.
+
+---
+
+### Layer 2 — Reservation Price Is the Fix
+
+Stop quoting around fair value. Quote around your reservation price — the price at
+which your inventory risk is already priced in.
+
+```
+reservation_price = fair_value − γ × inventory
+```
+
+- `fair_value` = microprice or mid — what the asset is worth to a neutral party
+- `γ` = risk aversion — how much you dislike holding inventory (calibrated per asset)
+- `inventory` = signed net position (+10 = long 10, −10 = short 10)
+
+With half-spread δ:
+```
+bid = reservation_price − δ
+ask = reservation_price + δ
+```
+
+**When flat** (inventory = 0): reservation = fair value. Symmetric. No preference.
+
+**When long 10** (γ = 0.01):
+```
+reservation = 14.00 − 0.01 × 10 = 13.90
+bid = 13.85   ← harder for sellers to sell to you
+ask = 13.95   ← easier for buyers to buy from you
+```
+
+**When short 10**:
+```
+reservation = 14.00 − 0.01 × (−10) = 14.10
+bid = 14.05   ← easier for sellers to sell to you (reducing your short)
+ask = 14.15   ← harder for buyers to buy from you
+```
+
+Both quotes shift in the direction that makes inventory-reducing fills more likely.
+No quotes pulled. No sides disabled. Continuous.
+
+---
+
+### Layer 3 — Spread Also Widens With Inventory
+
+Skew alone is not enough. Each additional fill on the wrong side deepens exposure.
+The spread must widen to compensate for the carry risk each new fill adds.
+
+**Avellaneda-Stoikov 2008** — optimal half-spread:
+```
+δ* = (1/γ) × ln(1 + γ/κ)  +  (γ × σ² × (T−t) × |2q+1|) / 2
+       ↑ adverse selection       ↑ inventory carry term
+```
+
+- `κ` = aggressor arrival rate — controls how much you can charge without losing fills
+- `γ × σ² × (T−t)` = carry risk that grows with volatility AND time remaining
+- `|2q+1|` = inventory magnitude term
+
+At flat inventory (q=0): spread reflects only adverse selection + fee coverage.
+At high inventory: spread widens — each fill on the wrong side costs more to compensate
+the carry it adds. Widening makes wrong-direction fills more expensive while skew makes
+the right-direction fills easier. Both active simultaneously.
+
+---
+
+### Layer 4 — Inventory Urgency in 24/7 Crypto
+
+Avellaneda-Stoikov uses `(T−t)` — time to session end. Equity markets close at 4pm.
+Crypto never closes. Professional crypto market makers do not shut down to create a
+session boundary — shutting down is zero revenue.
+
+They replace time-urgency with three continuous signals:
+
+**1. Inventory magnitude** — large position is always urgent, regardless of time.
+Urgency is driven by `|inventory|`, not by a clock.
+
+**2. Inventory age** — how long a position has been held without flattening. If long
+10 contracts for 45 minutes with no mean-reversion, urgency is identical to "45 minutes
+until session end" in equity terms. `t_held_inv_s` (inventory hold age) is the practical
+substitute for `(T − t)`.
+
+**3. Funding rate** — perpetual contracts pay funding every 8 hours. Holding a large
+position into a funding event that goes against it is a real periodic carry cost. The
+8-hour funding window functions as a soft session boundary in crypto. This is Layer 6.
+
+---
+
+### Sees vs Misses
+
+| Method | What it sees | What it misses |
+|---|---|---|
+| Symmetric quoting | Every fill captures the spread | Carry accumulates — forced flatten at bad price |
+| Hard limit + flatten | Prevents catastrophic exposure | Flattens at market price at the limit |
+| Reservation price (skew only) | Continuously nudges fills toward flat | Does not widen spread — still takes on carry risk per wrong-side fill |
+| Skew + spread widening | Compensation per wrong-side fill too | Not inventory-age-aware — same urgency at minute 1 and minute 60 |
+| Full Avellaneda-Stoikov | Skew + widening + urgency ramp | Static γ — does not interact with TailScore when both are high |
+
+---
+
+### Professional Standard
+
+| Component | What they do |
+|---|---|
+| Reservation price | A-S with per-asset γ calibrated from historical carry cost data |
+| Spread widening | `δ ∝ γ × σ² × T_remaining + adverse_selection_floor` |
+| Skew | Continuous — updates every cycle, never steps |
+| Urgency | Inventory age + funding proximity replace session-clock urgency |
+| TailScore interaction | High p_tox + high inventory: wide spread + maximum skew simultaneously |
+| Cross-venue hedge | At hard inventory limit: immediately hedge on another venue — do not wait for passive fills |
+
+---
+
+### Summary
+
+| | |
+|---|---|
+| **What it is** | Cost of holding inventory — position × price move × time = carry drag |
+| **Naive failure** | Symmetric quoting → inventory accumulates → forced flatten at bad price |
+| **Reservation price** | `fair_value − γ × inventory` — shifts quotes toward reducing position |
+| **Skew** | Both bid and ask move to make inventory-reducing fills easier |
+| **Spread widening** | Wider spread at high inventory — compensates carry cost per wrong-side fill |
+| **24/7 urgency** | Inventory age + funding timing replace session-clock urgency |
+| **Professional standard** | A-S with per-asset γ, inventory-age T, TailScore interaction, cross-venue hedge at limit |
+
+---
+
+---
+
+## Layer 5.5 — Cross-Venue Delta Neutrality
+
+---
+
+### What It Is
+
+When a market maker quotes on multiple venues simultaneously, watching individual venue inventory is not enough. You can be flat on Bybit (+0 SUI), flat on Binance (+0 SUI), and long 70 contracts on BitMEX — from Bybit's view, nothing looks wrong. From the system's view, you are carrying $4,200 of directional SUI risk with no mechanism to exit it.
+
+**Delta neutrality** means the net signed position summed across ALL active venues is approximately zero per symbol:
+
+```
+net_delta = Binance_qty + Bybit_qty + BitMEX_qty ≈ 0
+```
+
+Getting this wrong means the engine is unknowingly running a directional book — not market making, but speculating with exchange fees on top.
+
+---
+
+### Why the Naive Approach Fails
+
+A beginner watches each venue separately and panics when any single venue exceeds an inventory limit.
+
+**The problem**: fills happen asynchronously. You make-fill on Bybit (long +50), partially hedge on BitMEX (short −20), and make-fill again on Binance (long +30). Each venue alone says "normal." The net says "long +60."
+
+**Concrete incident**: cyc131 mainnet. SUI reached net −70 (BitMEX +10, Bybit −80) while every per-venue residual check passed — `abs_diff_base = 0.0` on each venue individually. The verification script was computing per-venue accuracy but never summing across venues. The engine bled on a directional position it didn't know it had.
+
+---
+
+### How It Works
+
+**Layer 1 — Net delta check**: sum signed position across all venues every cycle per symbol. Hedge when |net| > threshold.
+
+```
+net_SUI = Binance_SUI + Bybit_SUI + BitMEX_SUI
+```
+
+**What about basis risk?** When you hedge by taking IOC on another venue, you now have a long on one venue and a short on another — the prices are not identical. The divergence between venue prices while you're hedged is **basis risk**. The primary driver is the perpetual funding rate — different venues can have different funding rates, so your "hedged" position still carries funding exposure. This is the cost you accept when you eliminate carry risk via hedging.
+
+---
+
+**Layer 2 — When to hedge?** Hedging costs money: taker fee + half-spread on the hedge venue. You don't hedge every tick.
+
+Decision: hedge when expected carry cost exceeds hedge cost.
+
+```
+carry_cost = |inventory| × σ × mark × √(t_held)    // grows with time and vol
+hedge_cost = taker_fee_bps × mark × qty + 0.5 × spread_hedge_venue × qty
+
+hedge if carry_cost > hedge_cost
+```
+
+**Mean-reverting regime**: price is bouncing around. In T minutes the position will likely be filled flat naturally. Wait — don't pay taker fees for something passive fills will solve.
+
+**Trending regime**: price is moving away from your fill price. The longer you wait, the more carry accumulates. Hedge now, pay the taker fee, reset the position.
+
+The carry vs hedge cost break-even time:
+
+```
+T_break_even = (hedge_cost / (|inventory| × σ))²
+```
+
+If T_break_even < 10 minutes in current σ regime → hedge now. If T_break_even > 20 minutes → wait for passive fills.
+
+---
+
+**Layer 3 — The no-transaction band** (Barzykin-Bergault-Guéant 2022 §3-4): don't hedge every time net > 0. Hedge when net exceeds a band derived from three components:
+
+```
+band = max(
+    band_floor,                          // minimum lot size below which hedging is uneconomic
+    band_sigma × σ × √dt × mark,        // 2-sigma natural drift over dt seconds — tolerable variance
+    band_fee × mark                      // fee break-even — must exceed taker round-trip cost
+)
+
+hedge fires when: |net_delta| × mark > band
+```
+
+**Why the sigma term?** In high volatility, natural position swings are larger — a $200 net delta today might reverse in 30 seconds. Setting the band to 2σ × √dt means you only hedge when the position is large relative to what natural mean-reversion can handle. In low volatility, the same $200 net delta is suspicious — it's unlikely to self-correct — so the band is tighter.
+
+---
+
+**Layer 4 — Signal-conditional threshold** (professional): the band should tighten when directional pressure is building. Four signals that indicate the position will NOT self-correct:
+
+| Signal | Why it matters |
+|---|---|
+| **OFI** (order flow imbalance) | Book pressure building before trades fire — p_tox — probability the fill is from informed flow — is rising. Position will worsen, not revert. |
+| **Mid drift velocity** | Price is moving away from your fill price at sustained speed — not a transient noise bounce. |
+| **Adverse fill streak** | N consecutive fills all on the same side — you're being picked off directionally, not making two-sided markets. |
+| **Inventory age** (`t_held`) | Position has been held 20 minutes without reversion — market has moved against you permanently. |
+
+In trending regime (OFI strong + drift velocity high + streak active): band narrows → hedge at smaller net delta.
+In mean-reverting regime (OFI low + drift flat): band stays wide → wait for passive fills.
+
+---
+
+### Sees vs Misses
+
+| Method | What it sees | What it misses |
+|---|---|---|
+| Per-venue inventory limit | Single-venue exposure | Cross-venue net accumulation |
+| Net delta sum across venues | Total directional risk per symbol | When to hedge (would trigger on every tiny imbalance) |
+| No-transaction band (BBG 2022) | Avoids over-hedging in normal variance | Same threshold in trending vs mean-reverting |
+| Signal-conditional band | Adapts urgency to market state | Requires OFI and streak signals to be active |
+
+---
+
+### Professional Standard
+
+| Component | What they do |
+|---|---|
+| Net delta | Computed across ALL venues every cycle, per symbol, including all leg types |
+| Hedge trigger | BBG 2022 band: `max(band_floor, band_2σ × √dt, band_fee)` |
+| Regime conditioning | Band narrows on high OFI + high drift velocity + adverse fill streak |
+| Inventory age urgency | `t_held` continuously narrows the band — position held 20min = much tighter threshold |
+| Venue selection | Hedge routes to cheapest venue: `taker_fee_bps + 0.5 × spread` compared live |
+| Basis risk monitoring | Funding rate divergence tracked as latent basis risk — factored into carry cost |
+| Continuous in-engine auditor | Every 60s: assert `|net_delta| ≤ tol` internally — not just at post-deploy checkpoints |
+
+---
+
+### Summary
+
+| | |
+|---|---|
+| **What it is** | Net signed position summed across all venues — must stay near zero per symbol |
+| **Why it matters** | Per-venue limits catch single-venue exposure, not cross-venue accumulation |
+| **Naive failure** | Each venue reports flat; net is directional; engine unknowingly speculates |
+| **No-transaction band** | Hedge when net > band — avoids over-hedging on natural variance |
+| **Carry vs hedge** | Hedge when σ × √t_held × |inventory| > taker_fee + spread; otherwise wait |
+| **Regime conditioning** | Trending regime: narrow band (hedge sooner); mean-reverting: wide band (wait) |
+| **Professional standard** | BBG 2022 band + signal-conditional tightening + inventory-age urgency + continuous auditor |
+
+---
+
+---
+
+## Layer 6 — Funding Rate / Basis in Perpetuals
+
+---
+
+### Why the Naive Approach Fails
+
+A beginner market maker quotes two-sided on a SUI perpetual, earns the spread, and tracks daily gpnl. After a week they notice something strange: spread capture is consistently positive, but total gpnl is flat or negative. The spread model looks right. The fills look right. The number doesn't add up.
+
+What they missed: every 8 hours, an invisible cash payment clears against their inventory.
+
+**Concrete example:**
+
+You hold 100 SUI long at $3.50 throughout a session. Funding rate is +0.05% (positive means longs pay shorts). At the 8h mark:
+
+```
+funding_payment = inventory × mark_price × funding_rate
+               = 100 × $3.50 × 0.0005
+               = $0.175 per period
+
+Three periods per day = $0.525/day out of your account.
+Equivalent to ~14 full bid-spread captures erased.
+```
+
+You can be a perfectly functioning market maker and still lose money to funding if you hold consistent long inventory in a high-positive-funding environment.
+
+---
+
+### How the Funding Rate Is Computed
+
+The exchange derives the rate from the basis — the gap between the perpetual price and the spot index:
+
+```
+premium_index = (perp_mid − index_price) / index_price    // basis as fraction of spot
+interest_rate = 0.01% per 8h                              // fixed cost of capital
+
+funding_rate ≈ premium_index + interest_rate              // simplified, clamped ±0.75%
+```
+
+**Why this formula?** If the perp is above spot (premium_index > 0), longs pay shorts. This makes going short the perp attractive — new shorts enter, new longs are discouraged — which pulls the perp back toward spot. The funding mechanism IS the anchoring mechanism. Without it, a perpetual would drift away from spot permanently since there's no delivery date forcing convergence.
+
+**Sanity check**: if perp == spot, premium_index = 0, funding rate ≈ 0.01% (just the interest rate). Nobody is especially advantaged. Holding a perp long is like borrowing capital — a tiny per-period cost is correct.
+
+**Numbers**: SUI perp at $3.52, SUI index at $3.50:
+```
+premium_index = (3.52 − 3.50) / 3.50 = +0.57%
+funding_rate  ≈ 0.57% + 0.01% = 0.58% per 8h
+
+= 21% annualized carry cost for longs.
+```
+At 0.58%, a 100-lot long position pays $2.03 every 8 hours. Holding for a full day = $6.09 — the engine would need to capture 120+ spreads on that position just to break even on carry.
+
+---
+
+### Funding as a Regime Signal
+
+The funding rate is not just a cost — it tells you the market's structure.
+
+**High positive funding (>0.05%)** means:
+- Perp is trading significantly above spot
+- The market is net-long and leveraged — retail traders are paying to stay long
+- Adverse selection risk rises on bid fills: fills happen into a crowded bullish trade; correlated adverse moves are more likely
+
+**High negative funding (<−0.05%)** means:
+- Perp is below spot; shorts are crowded and leveraged
+- Ask fills carry elevated squeeze risk
+
+**For a market maker, high positive funding changes two things:**
+
+1. **Every bid fill is more expensive than it looks.** Not just adverse selection risk — also 0.05%+ per 8h in explicit cash carry. Your effective bid price should be lower to demand more compensation per fill.
+
+2. **The spread must include a funding-adjusted floor:**
+
+```
+spread_bid += 2 × |funding_rate_per_tick × expected_hold_time|
+```
+
+At 0.05%/8h = 0.000174%/min, with expected 5min hold per fill:
+```
+funding_carry = 0.000174% × 5 = 0.00087% ≈ 0.030 ticks on SUI at $3.50
+```
+Small per fill, but stacks directly with the adverse selection floor from Layer 4 and the inventory carry term from Layer 5.
+
+---
+
+### Funding Timing — the 5-Minute Window
+
+Funding payments happen at specific UTC moments: 00:00, 08:00, 16:00. The inventory you hold at that exact second determines your payment.
+
+**Pre-funding urgency**: if funding rate is +0.1% and you're holding 200 SUI long, holding through the window costs $0.70. Flattening 5 minutes before avoids the payment entirely.
+
+A professional MM tracks `time_to_next_funding`. As it approaches zero with large positive-rate long inventory:
+- Widen bid further (demand even more edge per wrong-side fill)
+- Accelerate skew toward flattening
+- Consider hedging earlier than the normal band would trigger
+
+This is directionally the same as the session-urgency in Avellaneda-Stoikov (Layer 5) — but driven by the funding clock, not a closing bell. In crypto, this IS the urgency signal that replaces (T−t).
+
+---
+
+### Basis Risk Across Venues
+
+From Layer 5.5: when you hedge by going short on a different venue, you hold long on venue A and short on venue B. This looks delta-neutral. But funding rates are NOT identical across venues.
+
+**Example**: BitMEX SUI funding = +0.08%, Bybit SUI funding = +0.03%.
+
+You are long BitMEX, short Bybit:
+```
+Pay on BitMEX long:    0.08% per period on notional
+Receive on Bybit short: 0.03% per period on notional
+
+Net funding drag = 0.08% − 0.03% = 0.05% per period
+```
+
+Your "delta-neutral" hedge still has a 0.05%/8h carry cost purely from the funding rate divergence. This is **funding basis risk** — distinct from the price basis risk (venue prices diverging temporarily) covered in Layer 5.5.
+
+```
+funding_basis_drag = |rate_long_venue − rate_short_venue| × inventory × mark
+```
+
+The hedge venue selection should incorporate `funding_rate_diff` in its cost comparison, not just `taker_fee + spread`.
+
+---
+
+### Sees vs Misses
+
+| Method | What it sees | What it misses |
+|---|---|---|
+| Ignore funding | Spread revenue | Periodic cash drain — can erase all spread capture |
+| Track funding rate as a cost | Explicit carry per period | Funding as regime signal (crowded longs = elevated adverse selection) |
+| Funding-adjusted spread | Correct per-fill compensation in current rate environment | Timing urgency near 8h window |
+| Pre-funding urgency ramp | Avoids worst-case inventory carry through settlement | Cross-venue funding basis in hedged positions |
+| Full professional model | All of the above simultaneously | — |
+
+---
+
+### Professional Standard
+
+| Component | What they do |
+|---|---|
+| Funding rate | Consumed live from venue WebSocket every tick — not polled |
+| Spread adjustment | `spread_bid += funding_carry_term` when rate > 0; opposite when rate < 0 |
+| Pre-funding urgency | Track `time_to_next_funding`; in last 300s with long inventory → widen bid + narrow hedge band |
+| Funding as regime signal | Sustained >0.05% → increase adverse selection weight; reduce bid size |
+| Cross-venue hedge cost | HedgeRouter adds `funding_rate_diff × notional` to each venue's hedge cost comparison |
+| Sim modelling | Funding payments modelled in sim P&L — prevents sim-live divergence on high-funding sessions |
+
+---
+
+### Summary
+
+| | |
+|---|---|
+| **What it is** | Periodic payment between longs and shorts to anchor perp price to spot |
+| **Direction** | Positive rate → longs pay shorts; negative → shorts pay longs |
+| **Formula** | `funding_rate ≈ (perp_mid − index) / index + 0.01%` — basis dominates |
+| **MM impact** | Long inventory in positive-funding regime = explicit cash carry on top of adverse selection |
+| **As a signal** | High positive funding = crowded leveraged longs = elevated adverse selection risk on bid fills |
+| **Timing** | Track `time_to_next_funding` — widen bid + accelerate flatten in the 5-min approach window |
+| **Cross-venue** | "Hedged" positions still carry funding basis risk if venues have different rates |
+| **Professional standard** | Live funding rate → spread floor + pre-funding urgency + regime signal + cross-venue cost comparison + sim modelling |
+
+---
+
+---
+
+## Layer 8 — Asset-Wise Profitability
+
+---
+
+### Why the Naive Approach Fails
+
+You run 10 assets. Total session gpnl = +$5. You note it's a profitable day.
+
+What you didn't see:
+```
+SUI:   +$22     TRUMP: −$8
+BTC:   +$8      AAVE:  −$7
+BNB:   +$3      LINK:  −$5
+ETH:   +$3      NEO:   −$4
+SOL:   +$2      DOGE:  −$9
+```
+
+Three assets made $35. Seven lost $30. You ran a seven-way losing book subsidized by three winners — and you never noticed because you only looked at the sum.
+
+Total session gpnl is the worst possible diagnostic. It tells you whether the day was positive. It tells you nothing about what caused it, which assets to run more of, or which to stop.
+
+---
+
+### The Four Dimensions of Per-Asset Health
+
+Every asset needs to be measured on four axes simultaneously.
+
+---
+
+**1. GPNL per fill** — how much do you earn per maker fill on average?
+
+```
+gpnl_per_fill = session_gpnl / fill_count
+```
+
+Positive = spread captures more than adverse selection loses. Negative = the asset's fills are structurally losing regardless of spread width.
+
+**Numbers**: SUI — 200 fills, +$18 gpnl → +$0.09/fill. DOGE — 180 fills, −$9 gpnl → −$0.05/fill. SUI earns 9 cents per fill; DOGE loses 5 cents on every fill it receives.
+
+---
+
+**2. Fill rate** — fills per hour per asset
+
+High fill rate × positive gpnl/fill = ideal. But fill rate alone says nothing:
+- High fill rate + negative gpnl/fill = constantly swept by toxic flow
+- Low fill rate + positive gpnl/fill = spread is wide, fills are selective — may be fine
+- Low fill rate + negative gpnl/fill = almost never fills and loses when it does — exit the asset
+
+Fill rate is only useful alongside gpnl/fill.
+
+---
+
+**3. Adverse fill rate** — fraction of fills that moved against you afterward
+
+```
+adverse_fill_rate = fills where post_fill_100ms_markout < 0 / total_fills
+```
+
+Re-anchoring p_tox from Layer 2: p_tox is the probability the fill is from informed flow. The adverse fill rate is the realized outcome of that probability — measured from actual post-fill markout in fills_*.jsonl, not predicted.
+
+**Threshold**: if adverse fill rate > 35–40%, the asset's flow is structurally informed. No spread adjustment fixes this — you are quoting into a book dominated by traders who know more than you. The right response is not to widen; it is to question whether to run the asset at all.
+
+**Example**: TRUMP adverse fill rate = 48%. For nearly half of all TRUMP fills, the market immediately moved against you. That is not a calibration problem — it is a flow composition problem.
+
+---
+
+**4. Capital efficiency** — gpnl per unit of inventory risk committed
+
+```
+capital_efficiency = session_gpnl / (avg_inventory_notional_usd × session_hours)
+```
+
+This is the dimension that most engines miss entirely. Two assets can both show +$10 gpnl:
+- LINK: avg $150 inventory → efficiency = $10 / ($150 × 4h) = $0.017/USD·hour
+- SUI:  avg $800 inventory → efficiency = $10 / ($800 × 4h) = $0.003/USD·hour
+
+LINK earned the same return at one-fifth the capital. In a world with a fixed total inventory cap ($3,000 across all assets), every dollar you give to the SUI-equivalent is a dollar you cannot give to the LINK-equivalent.
+
+---
+
+### The Capital Allocation Decision
+
+```
+maximize: Σ_asset (capital_allocation_i × capital_efficiency_i)
+subject to: Σ_asset capital_allocation_i ≤ total_risk_budget
+```
+
+Run more of what works. Run less of what doesn't. This is not complex in principle — it is just invisible without the per-asset scorecard.
+
+**Screening criteria** — when to reduce or drop an asset:
+
+| Criterion | Threshold | Action |
+|---|---|---|
+| GPNL (rolling 5 sessions) | < 0 | Reduce cap; investigate |
+| Adverse fill rate | > 35% | Investigate flow composition |
+| Adverse fill rate | > 45% | Flag for removal |
+| Capital efficiency | Below basket average | Reallocate cap to better assets |
+| Fill rate | Below minimum | Spread too wide or asset illiquid |
+
+---
+
+### How Prior Layers Compound Per-Asset Differently
+
+Each gap from Layers 0–7 damages different assets disproportionately:
+
+| Layer | Which assets suffer most |
+|---|---|
+| L0 — fair value lag | Thin-book assets (SUI, TRUMP, NEO) — mid vs microprice diverges 3–5 ticks |
+| L2 — adverse selection | Structurally informed assets — news-driven tokens with high informed-flow fraction |
+| L3 — cancel RTT | Fast-moving assets (SUI, LINK) — stale window matters more when price moves quickly |
+| L5 — inventory carry | High-volatility assets — carry cost grows with σ; SUI carry >> AAVE carry |
+| L6 — funding | Assets where you hold consistent long inventory in positive-funding environments |
+| L7 — churn | Thin-book assets with 1-tick spreads — queue destruction per reprice is more damaging |
+
+The scorecard tells you WHERE the losses are. The gap register tells you WHY. Used together, they produce a prioritized list: fix the gap that hurts the most assets or the most capital-weighted asset first.
+
+---
+
+### Sees vs Misses
+
+| Method | What it sees | What it misses |
+|---|---|---|
+| Total session gpnl | Was the day profitable? | Which assets made money vs which are subsidized |
+| Per-asset gpnl | Which assets contributed | Doesn't separate adverse selection from spread capture |
+| Gpnl/fill + adverse fill rate | Fill quality per asset | Doesn't account for inventory risk committed |
+| Capital efficiency ranking | True return per unit of risk budget | Rankings shift with regime — requires rolling window |
+| Full 4-axis rolling scorecard | Complete picture for allocation decisions | — professional standard |
+
+---
+
+### Professional Standard
+
+| Component | What they do |
+|---|---|
+| Daily scorecard | Per-asset: gpnl, fill_count, gpnl/fill, adverse_fill_rate, fills/hour, avg_inventory_notional, capital_efficiency |
+| Rolling window | 5-session rolling average — smooth single-session noise |
+| Automatic reallocation | Capital shifts toward high-efficiency assets; advisory script proposes TOML changes |
+| Adverse rate gate | > 35%: cap reduction. > 45%: flagged for removal |
+| New asset screening | 3-criterion pass (adverse rate, fill rate, capital efficiency) over 10-day sim + live trial |
+| Regime adjustment | Efficiency rankings recalibrated quarterly — calm-market rankings do not hold in high-vol |
+
+---
+
+### Summary
+
+| | |
+|---|---|
+| **What it is** | Per-asset decomposition of gpnl, fill quality, and capital committed |
+| **Naive failure** | Total gpnl masks seven losing assets subsidized by three winners |
+| **Four axes** | Gpnl/fill + adverse fill rate + fill rate + capital efficiency |
+| **Capital allocation** | Fixed risk budget → concentrate on high-efficiency assets, withdraw from low |
+| **Adverse rate gate** | > 35%: reduce; > 45%: remove. No spread adjustment fixes structural informed flow |
+| **Prior layer interaction** | Each gap hurts different assets — scorecard shows WHERE, gap register shows WHY |
+| **Professional standard** | 4-axis rolling scorecard → automatic reallocation proposals → regime-aware recalibration |
+
+---
+
+---
+
+## Layer 7 — Cancel/Replace Churn Ratio
+
+---
+
+### Why the Naive Approach Fails
+
+**Analogy**: you work a market stall and you reprice your sign every 30 seconds whenever the stall next door changes theirs. Each time you change the sign, the queue resets — customers walk away and rejoin the back. By end of day you changed the sign 200 times and served 4 customers. You were always correctly priced. You never made any money.
+
+A beginner MM reprices on every mid-price tick. Quotes are always near fair value. But:
+- Every reprice destroys queue position — new place goes to the back
+- Every reprice = 2 order operations (cancel + place) → OTR spikes → exchange may throttle
+- During the cancel's ~22ms round-trip, the old quote is live and can be adversely filled
+- Result: 500 operations/minute, 3 fills. All the cost of market making, none of the queue benefit.
+
+---
+
+### The Core Tension
+
+**Cost of repricing** (cancel + replace):
+- Queue rank resets to 0
+- +2 to OTR counter
+- ~22ms cancel RTT window where old stale quote remains fillable
+- If reprice delta < 1 tick: queue destruction with zero economic gain
+
+**Cost of NOT repricing** (holding a stale quote):
+- Quote drifts from fair value
+- Informed traders pick off a quote that's 3 ticks cheap
+
+The question: at what fair-value move distance does stale cost exceed reprice cost? That threshold is the decision boundary — and it must adapt to the current volatility regime.
+
+---
+
+### How It Works
+
+**Layer 1 — Reprice threshold**: only reprice when fair value has moved far enough:
+
+```
+reprice if |new_fair_value − current_quote_price| > δ_reprice
+```
+
+Too small → constant repricing, queue destruction, OTR spike.
+Too large → stale quotes → adverse fills.
+
+**Never reprice by less than 1 tick.** A sub-tick reprice sends a new quote to the same price level, resets queue rank, and gains nothing.
+
+---
+
+**Layer 2 — The adaptive threshold**: the threshold should track the current volatility regime:
+
+```
+δ_reprice = max(1_tick, k_vol × σ_current × √(cancel_RTT_ms / 1000))
+```
+
+**Why σ × √RTT?** This is the expected mid-price move during the cancel window — the same quantity as the stale quote cost. You reprice only when the quote is already as stale as a full cancel-window of volatility would produce.
+
+- High vol (fast market): σ large → δ_reprice falls → reprice more aggressively. Quotes go bad fast.
+- Low vol (quiet market): σ small → δ_reprice rises → hold queue position longer.
+- High RTT: cancel is slow → stale window is large → tolerate more staleness before repricing pays off.
+
+**Also**: `min_quote_lifetime_ms` — the temporal floor. Even if the spatial threshold fires, the quote cannot be canceled until it has lived long enough. Prevents burst repricing (a fast price spike triggers 20 cancels in 50ms). In KCMME: 300ms default, per-asset configurable, but static within a session (identified gap: should be σ-adaptive too).
+
+---
+
+**Layer 3 — Schmitt-trigger hysteresis**: a threshold without hysteresis bounces. If |Δd*| = 2.1 ticks and threshold = 2.0, the reprice fires. After the reprice, |Δd*| = 0. Price moves 0.1 tick. Now |Δd*| = 0.1 — no reprice. Moves another 0.1 tick — |Δd*| = 0.2. If this oscillates, the engine enters a cancel/replace loop that never settles.
+
+**Schmitt-trigger** breaks this:
+```
+enter REPLACE-eligible: |Δd*| ≥ 1.0 × θ
+exit  REPLACE-eligible: |Δd*| ≤ 0.6 × θ
+```
+Once you trigger, you stay in reprice mode until the quote is back within 60% of the threshold. Prevents oscillation at the boundary.
+
+---
+
+**Layer 4 — Churn budget and feedback loop**: OTR is a budget. If the exchange allows 200 operations/minute before throttling, and you fill 5 times/minute, your budget is 40 operations/fill. Professional MMs monitor rolling OTR and use it as a feedback signal:
+
+```
+if rolling_5min_churn_ratio > budget_threshold:
+    increase δ_reprice    // widen the dead-band — repress less aggressively
+else if churn_ratio < 0.7 × budget_threshold:
+    decrease δ_reprice    // budget headroom — can afford to track price more closely
+```
+
+This makes the system self-correcting. The engine modulates its own reprice aggressiveness based on observed outcome, not just on a calibrated parameter.
+
+---
+
+### Sees vs Misses
+
+| Method | What it sees | What it misses |
+|---|---|---|
+| Reprice on every tick | Always near fair value | Queue destruction, OTR spike, exchange throttle |
+| Fixed threshold (e.g. 2 ticks) | Controlled churn in normal conditions | Too aggressive in high-vol, too conservative in low-vol |
+| σ-adaptive threshold | Right balance for current regime | No feedback — doesn't respond to actual observed churn rate |
+| Schmitt-trigger + adaptive | Prevents oscillation at boundary | No cross-asset OTR budget coordination |
+| Churn budget feedback + all above | Self-correcting, exchange-aware | — professional standard |
+
+---
+
+### Professional Standard
+
+| Component | What they do |
+|---|---|
+| Reprice threshold | `max(1_tick, k_vol × σ × √RTT)` — σ-adaptive per asset |
+| Schmitt-trigger | Hysteresis at 1.0×θ enter / 0.6×θ exit — prevents oscillation |
+| Minimum quote lifetime | Hard temporal floor, ideally also σ-adaptive |
+| Sub-tick guard | Reprice vetoed if new price == current price after tick rounding |
+| OTR monitoring | Rolling 5min churn ratio tracked per asset per venue in real time |
+| Churn budget feedback | High OTR → widen dead-band autonomously; recover when OTR falls |
+| Queue-protect gate | Skip cancel if current queue value > back-of-queue replace value |
+
+---
+
+### Summary
+
+| | |
+|---|---|
+| **What it is** | Ratio of cancel/place operations to fills — measures quoting activity vs liquidity produced |
+| **The tension** | Reprice too often: queue destruction + OTR throttle. Too rarely: stale fills |
+| **Sub-tick guard** | Never reprice to the same price level — queue destruction with zero gain |
+| **Adaptive threshold** | `max(1_tick, k_vol × σ × √RTT)` — widens in fast markets, tightens in slow |
+| **Schmitt-trigger** | Hysteresis prevents oscillation at the threshold boundary |
+| **Churn budget** | OTR is a budget; feedback loop keeps churn near the limit, not blindly below |
+| **`min_quote_lifetime_ms`** | Temporal hard floor — no cancel before minimum age, regardless of price move |
+| **Professional standard** | σ-adaptive threshold + Schmitt-trigger + OTR feedback + queue-value gate |
+
+---
+
+---
+
+## Layer 9 — Per-Asset Calibration
+
+---
+
+### Why the Naive Approach Fails
+
+You spend two weeks carefully tuning SUI parameters. Adverse fill rate drops from 38% to 27%. GPNL/fill turns positive. You copy the same parameter set to AAVE, BNB, and LINK and deploy all four.
+
+AAVE starts bleeding immediately. BNB churns on every tick. LINK barely fills.
+
+The parameters that fit SUI captured SUI-specific properties — its tick size, its book depth, its informed-flow fraction, its volatility in tick units. None of those are the same on AAVE. You didn't tune an engine; you tuned a SUI engine and called it general.
+
+Each asset is a different environment. The engine must adapt to the environment — the environment will not adapt to the engine.
+
+---
+
+### What Must Be Calibrated Per Asset
+
+Not all parameters matter equally. There is a tier structure.
+
+**Tier 1 — Must be per-asset (wrong here = structural bleed every session):**
+
+| Parameter | Why it must differ |
+|---|---|
+| `base_spread` / `k_vol_spread` | SUI σ in tick units is 5× higher than LINK. Same multiplier on both means SUI is underpriced and LINK is overpriced. |
+| Toxicity sensitivity (`k_tox_gate`) | Adverse fill fraction differs by asset. SUI attracts more informed flow than AAVE. Same sensitivity = over-defensive on AAVE, under-defensive on SUI. |
+| `max_inventory_notional` | Must match the asset's fill rate and σ. At SUI's fill rate and volatility, $500 notional cap fills up in 2 minutes. On BTC it takes 45 minutes. |
+| `integrated_gamma` | Risk aversion in the A-S spread formula. γ must reflect this asset's carry cost per lot — proportional to σ per tick. |
+| `replace_deadband_k_sigma` | The vol-adaptive reprice multiplier. Needs different calibration per asset because σ in tick units and book update frequency differ. |
+
+**Tier 2 — Should be per-asset (wrong here = suboptimal but survivable):**
+`k_inv_depth_t` (inventory widening), `mid_drift_cancel_frac` (stale cancel aggressiveness), `min_quote_lifetime_ms`.
+
+**Tier 3 — Can be shared:**
+`cancel_replace_cooldown_ms`, `ws_ping_interval_ms`, `funding_interval_hr` — exchange/operational properties, not asset-specific.
+
+---
+
+### The Calibration Sequence
+
+Calibrate in order. Each layer depends on the previous one being stable. Never touch layer N+1 while layer N is still moving.
+
+```
+Step 1: Spread floor (base_spread, k_vol_spread)
+        ↓ freeze
+Step 2: Toxicity sensitivity (k_tox_gate, tox weights)
+        ↓ freeze
+Step 3: Inventory cap (max_inventory_notional)
+        ↓ freeze
+Step 4: Reprice threshold (replace_deadband_k_sigma)
+        ↓ freeze
+Step 5: Advanced (integrated_gamma, T_horizon)
+        ↓ only when 1–4 are stable
+```
+
+If the spread floor is wrong, the toxicity data you collect is polluted — you're measuring adverse selection at the wrong spread width. Tuning toxicity first means calibrating to a moving target.
+
+---
+
+### The Cold-Start Problem
+
+You need 200–300 fills with post-fill markout to compute a statistically meaningful adverse fill rate and A3 deflated Sharpe. But to get 200 fills you need to be live. But to be live you need parameters.
+
+**The cold-start solution**: use Stage 2 sim-derived parameters as the starting point. Apply a 20% safety margin (widen spread, reduce inventory cap). Collect live data. Once you have 200+ fills with markout, calibration starts.
+
+```
+Stage 2 sim suggests: base_spread = 4 ticks
+Cold-start live:      base_spread = 5 ticks  (+20% safety margin)
+```
+
+---
+
+### Walk-Forward Validation Protocol
+
+The antidote to overfitting. Parameters are never validated on the same data they were tuned on.
+
+1. **Collect**: run cold-start parameters for 10+ sessions
+2. **Split**: sessions 1–7 calibrate / sessions 8–10 validate (sealed during calibration)
+3. **Calibrate**: tune Tier 1 params against sessions 1–7 only
+4. **Lock**: freeze all parameters
+5. **Validate**: run locked params against sessions 8–10 without touching them
+6. **Gate**:
+   - A3_deflated_sharpe on sessions 8–10 ≥ 70% of sessions 1–7 → **PASS**
+   - A3_deflated_sharpe on sessions 8–10 < 70% → **FAIL (overfit)**
+
+If FAIL: the calibration captured the noise of sessions 1–7, not the structure of the asset. Collect more data and re-examine what drove the apparent improvement.
+
+---
+
+### Overfitting Detection Signals
+
+| Signal | What it reveals |
+|---|---|
+| **High parameter sensitivity** | Change k by 10% → gpnl changes >30%. You're on a sharp peak — likely a historical artefact. |
+| **Parameters at range boundaries** | Tuned k_tox is at its configured maximum. The optimizer found an edge case, not a general property. |
+| **One session driving the result** | Remove one session from calibration window → A3 drops >50%. You calibrated to one outlier. |
+| **Walk-forward degradation > 30%** | Definitive test — calibration didn't generalise. |
+
+---
+
+### Regime-Conditional Calibration
+
+Calibrating on mixed-regime data produces params that are suboptimal for both regimes — an average of two different distributions.
+
+**Separate calibration sets:**
+- Calm-regime params: sessions where `sigma_short < 30th percentile`
+- Trending-regime params: sessions where `sigma_short > 70th percentile`
+
+In calm SUI, `k_tox_gate` might correctly sit at 0.15 (informed flow rare). In trending SUI, `k_tox_gate` should be 0.35 (informed flow spikes). Mixed-regime data gives 0.22 — under-defensive in trending, over-defensive in calm.
+
+The live regime classifier (Layer 10) switches between the two sets. When regime flips, params flip.
+
+---
+
+### Can We Make This Fully Automated? (Honest Answer)
+
+Some params ARE already auto-adaptive. The FeedbackController updates `k_tox_live` on every fill — online learning is already running. The remaining pain comes from params that update too slowly for fill-by-fill adaptation:
+
+| Parameter | Why it can be online adaptive |
+|---|---|
+| `k_tox_live` | Already: FB controller updates per fill |
+| `replace_deadband_k_sigma` | Can adapt from session OTR data each session |
+| `min_quote_lifetime_ms` | Can adapt from current σ_tick_rate (Layer 7 gap) |
+| `k_tox_gate` | Can adapt as posterior from rolling adverse fill rate |
+
+| Parameter | Why it cannot be fully online adaptive |
+|---|---|
+| Asset's baseline flow composition | Property of who trades it — changes slowly; need 200+ fills to observe |
+| Walk-forward gate | Cannot have a held-out window in a fully online system — fundamental tension |
+| Cold-start prior for a genuinely new asset | Must come from somewhere — sim-derived conservative defaults |
+
+The right target: small set of cold-start priors (conservative, sim-derived) + everything else driven by the feedback controller. After 200+ fills, the system has self-calibrated to the asset.
+
+---
+
+### Sees vs Misses
+
+| Approach | What it sees | What it misses |
+|---|---|---|
+| Global params (same for all) | Engine simplicity | Every asset is a different environment |
+| Per-asset tuning (no validation) | Asset-specific fit | May be overfit to historical window |
+| Walk-forward validated calibration | Generalizable params | Mixed-regime data averages two distributions |
+| Regime-conditional walk-forward | Full picture | Requires enough data per regime to calibrate separately |
+
+---
+
+### Professional Standard
+
+| Component | What they do |
+|---|---|
+| Calibration pipeline | Automated: fills data → locked_metrics → param proposal → walk-forward gate → staged deployment |
+| Sequence discipline | Validate-freeze per layer — never tune N+1 while N is unstable |
+| Data minimum | 300+ fills with markout before calibrating; 500+ for trusting A3 |
+| Walk-forward gate | 70% retention of calibration-window performance on validation window |
+| Sensitivity check | Every proposed param change tested ±10% and ±20% — must stay within 15% gpnl variance |
+| Regime-conditional | Separate calm/trending calibration sets per asset; regime classifier switches live |
+| Recalibration cadence | Quarterly or on regime shift; never ad-hoc mid-session |
+
+---
+
+### Summary
+
+| | |
+|---|---|
+| **What it is** | Finding the right parameter values for each asset from data, not intuition |
+| **Why per-asset** | Each asset has different σ, fill rate, informed-flow fraction, book depth |
+| **Calibration sequence** | Spread floor → toxicity → inventory cap → reprice threshold → advanced |
+| **Cold start** | Sim-derived params + 20% safety margin until 200+ fills collected |
+| **Walk-forward** | Calibrate on 70% of sessions, validate on 30% without re-tuning |
+| **Overfitting signals** | High sensitivity, boundary params, single-session dependence, walk-forward degradation |
+| **Regime-conditional** | Separate calm/trending param sets; regime classifier switches live |
+| **Professional standard** | Automated pipeline + validate-freeze sequence + sensitivity check + quarterly recalibration |
+
+---
+
+---
+
+## Layer 10 — Market Regime Classification
+
+---
+
+### Why the Naive Approach Fails
+
+You build a market making engine and tune it carefully. It works well for two weeks. Then it starts bleeding. Parameters unchanged. Spread unchanged. What changed was the market.
+
+The engine was tuned in a mean-reverting regime — prices oscillate around fair value, fills are balanced, inventory naturally unwinds. It is now in a trending regime — price has a direction, every bid fill is followed by a downward move, every ask fill by an upward move. The engine is posting two-sided quotes into a one-directional market. Every fill is adverse by design.
+
+**A regime-unaware engine is a regime-dependent engine pretending to be general.**
+
+---
+
+### The Three Regimes a Market Maker Cares About
+
+**Regime 1 — Mean-Reverting / Choppy**
+
+Price oscillates around fair value. Buyers and sellers are roughly balanced.
+```
+Price:   ↑↓↑↓↑↓↑↓   (oscillates)
+EV per fill: positive — spread captured, adverse selection low
+Inventory: fills naturally unwind as the book oscillates
+```
+This is the market maker's natural habitat. Tight spreads, high fill rates, natural inventory recycling.
+
+**Regime 2 — Trending**
+
+Price has direction. Every fill on the wrong side is followed by continued adverse movement.
+```
+Price:   ↓↓↓↓↓↓↓↓   (directional)
+Every bid fill: adverse markout negative (price keeps falling)
+EV per fill: structurally negative at current spread width
+```
+In a trending regime, two-sided market making is structural adverse selection. Informed traders know the direction — they sell your bids in a downtrend. Your fills are directionally concentrated, not balanced.
+
+**Regime 3 — Volatility Spike**
+
+Fair value gaps discontinuously. Any live quote is immediately stale by multiple ticks. Identical to Layer 3 stale quote exposure — but caused by a regime event rather than slow RTT.
+
+---
+
+### The Four Regime Signals
+
+**σ_ratio** = σ_short / σ_long (30s realized vol / 10min realized vol)
+- ratio > 1.5 → vol spike or early trend
+- ratio < 0.7 → unusually calm, mean-reverting
+
+**VPIN** = |buy_volume − sell_volume| / total_volume over rolling volume bucket
+- VPIN → 0: balanced flow (choppy/uninformed)
+- VPIN → 1: one-sided flow (trending/informed)
+- VPIN > 0.35–0.40 predicts increased adverse selection in next window (leading indicator)
+
+**OFI** = (bid_size_change_at_BBO − ask_size_change_at_BBO) / total_BBO_size
+- Sustained positive OFI → upward price pressure; negative → downward
+- 50–200ms leading signal; VPIN is minutes-scale. Both needed.
+
+**price_path** = (mid_now − mid_60s_ago) / σ_short
+- |price_path| > 2.0 → strong confirmed trend
+- |price_path| < 0.5 → choppy, no direction
+
+---
+
+### What Must Change Per Regime
+
+| Parameter | Choppy | Trending | Spike |
+|---|---|---|---|
+| Spread width | 2–3 ticks (base) | 4–6 ticks (widen structurally) | much wider; re-quote only after σ settles |
+| Inventory cap | full | reduce (don't accumulate against trend) | reduce temporarily |
+| Hedge band | normal | narrow (hedge more aggressively) | n/a — cancel all live |
+| Skew aggressiveness | moderate | high (push hard to exit wrong-side inventory) | n/a |
+
+---
+
+### The Probabilistic Classifier (Professional Standard)
+
+**Naive way** — hard threshold switch:
+```
+if VPIN > 0.40 → TRENDING
+if VPIN < 0.40 → CHOPPY
+```
+Problem: VPIN bounces around 0.40. Params flip back and forth. Engine destabilises.
+
+**Professional way** — probability output, blend params proportionally:
+```
+P(TRENDING | signals) = 0.73
+P(CHOPPY   | signals) = 0.22
+P(SPIKE    | signals) = 0.05
+
+spread = 0.73 × trending_spread + 0.22 × choppy_spread + 0.05 × spike_spread
+```
+No hard switch, no oscillation. Logistic regression or HMM trained on labelled historical sessions, walk-forward validated.
+
+---
+
+### Sees vs Misses
+
+| Approach | What it sees | What it misses |
+|---|---|---|
+| No regime awareness | Simple engine | Systematic adverse selection in trending; over-wide in choppy |
+| Hard threshold classifier | Regime detection | Oscillation at boundary; no uncertainty quantification |
+| Probabilistic classifier | Uncertainty handling | Requires labelled training data; walk-forward discipline |
+| Per-asset regime classifier | Asset-specific patterns | Some assets rarely trend — classifier must be per-asset |
+
+---
+
+### Professional Standard
+
+| Component | What they do |
+|---|---|
+| Four signals | σ_ratio + VPIN + OFI + price_path — no single signal sufficient |
+| Probabilistic output | Regime probability vector, not hard label — blend params proportionally |
+| Regime-conditional params | Separate calibration sets per regime per asset |
+| Walk-forward validated | Classifier trained on sessions 1–N, validated on N+1 |
+| Spike response | Cancel-all within 1 RTT; re-quote only after σ stabilises |
+| Per-asset classification | SUI and BTC have different regime signatures |
+
+---
+
+### Summary
+
+| | |
+|---|---|
+| **What it is** | Real-time labelling of market behavior — choppy, trending, or spiking |
+| **Why it matters** | Spread, hedge aggressiveness, inventory cap, and skew must all shift with regime |
+| **Four signals** | σ_ratio (magnitude), VPIN (informed flow fraction), OFI (book pressure), price_path (confirmed direction) |
+| **Regime-conditional params** | Two calibration sets (calm/trending) per asset; classifier blends between them |
+| **Spike response** | Cancel-all immediately; re-quote only after σ stabilises |
+| **Professional standard** | Probabilistic classifier + walk-forward validation + per-asset training |
+
+---
+
+## Layer 11 — Post-Fill Monetization
+
+### Naive Failure
+
+You post a bid at 99.90. It fills. Now what?
+
+Naive response: "great, I have a position, I'll just wait for the other side to fill and collect the spread."
+
+What actually happens:
+- The fill arrived because someone wanted to sell to you. They usually know why.
+- Price drifts against you. Your bid-fill at 99.90 sees mid move to 99.80 within 3 seconds.
+- You never get the ask fill. You eventually exit at 99.85 with a loss.
+
+The naive mistake: treating a fill as a completed trade. A fill is actually two events:
+1. **Entry edge locked**: you captured half the spread. This is permanent and already won.
+2. **Inventory created**: you now own a position that costs you carry every second you hold it.
+
+These two events require completely different management. Getting event 1 right (spread, adverse selection) is what Layers 1–10 cover. Managing event 2 is what Layer 11 covers.
+
+---
+
+### The Four Exit Paths
+
+After every fill, you have exactly four ways to exit the inventory:
+
+**Path 1: Passive recycle (preferred)**
+- Skew your ask side tighter — post on the other side of the spread
+- Wait for an opposing fill from natural flow
+- Cost: zero taker fees. You collect the spread on both legs.
+- Downside: takes time. During that time, inventory drift can erase the entry edge.
+
+**Path 2: Trailing stop (opportunistic)**
+- If price moves favorably after a bid fill (price goes up), ride it
+- Arm a trailing stop when unrealised PnL exceeds a threshold (e.g. 0.5× natural spread)
+- Stop fires when price gives back 20% of the peak gain
+- Example: bid fills at 99.90, price rises to 100.10. Trail stop arms. Price falls to 100.06. Stop fires at 100.06. Net: +$0.16 on the inventory (above the entry edge).
+- Research: Leung-Zhang 2019, Cartea-Sanchez-Betancourt 2025.
+
+**Path 3: Predictive exit (signal-triggered)**
+- A signal says: price is about to move adversely. Exit before the drift materialises.
+- Triggers: leading indicators — OFI shows one-sided pressure, Hawkes process acceleration, informed-flow score spike.
+- Exit order: limit (GTX preferred) or IOC if signal strength is high.
+- This is a pre-emptive exit, not a reaction to actual adverse price movement.
+
+**Path 4: Aggressive IOC exit (loss-cutting)**
+- Cancel all maker orders, fire an IOC taker on the opposing side.
+- This locks in a certain small loss (taker fee + half-spread crossing).
+- Used when: (a) carry cost will exceed IOC cost, or (b) adverse drift is already occurring.
+- Critical understanding: **IOC exit is NOT profit-taking. It is damage control.**
+
+---
+
+### The IOC Exit — Why It Always Loses Money
+
+People assume you can "exit profitably" with an aggressive IOC. You cannot. Here is why:
+
+**Binance USDT-M standard tier example (SUI, 1 lot = $3.50 notional):**
+
+```
+Entry: Bid fills at 99.90. You captured +0.5 ticks of spread (entry edge).
+Exit via IOC: You sell at 99.88 (market impact: −0.1 tick) + taker fee 0.05% = −0.35 tick.
+
+Spread captured: +0.5 ticks
+IOC taker fee:   −0.35 ticks  (0.05% × 2 legs, or just exit leg depending on venue)
+Exit crossing:   −0.1 tick    (half of the current spread you cross)
+Entry maker fee: +0.02% rebate = +0.14 ticks  (Binance rebate if you hold VIP)
+
+Net at standard tier: +0.5 − 0.05% on bid entry − 0.05% on IOC exit − 0.1 crossing
+                     ≈ +0.5 − 0.35 − 0.35 − 0.1 = −0.20 ticks net loss
+```
+
+The round-trip costs roughly 4 ticks total at standard tier. You captured 0.5 ticks on entry. IOC exit leaves you −3.5 ticks net — deeply negative.
+
+**The decision is: certain small loss (IOC now) vs uncertain large loss (hold through adverse drift).**
+
+IOC is the RIGHT choice only when:
+```
+carry_cost(t) > IOC_exit_cost
+carry_rate × t > fee_bps × notional
+```
+
+Where `carry_rate = inventory_notional × σ_daily / 86400` per second.
+
+**At VIP 5+** (Binance: maker 0.00%, taker 0.017%): IOC exit cost collapses to ~0.35 ticks net. Then the tradeoff genuinely changes and IOC becomes viable for much shorter hold durations.
+
+---
+
+### The Maker-First Timer
+
+Before firing an IOC, institutions first try a maker limit order on the exit side. The timer for how long to wait is NOT arbitrary — it is derived from the observed fill rate on that side.
+
+**Poisson model**: opposing fills arrive at rate λ_exit_side (fills per second).
+
+```
+P(no fill in time t) = e^(-λ × t)
+```
+
+Set the no-fill threshold at 5%: solve for t:
+
+```
+t* = −ln(0.05) / λ_exit_side = 3.0 / λ_exit_side
+```
+
+**Per-asset examples:**
+
+| Asset | Opposing side fill rate | Maker-first timer t* |
+|---|---|---|
+| SUI (liquid, skewed) | 500 fills/hour ≈ 0.14/s | ~21 seconds |
+| BCHUSDC (medium) | 40 fills/hour ≈ 0.011/s | ~4.5 minutes |
+| Thin token | 10 fills/hour ≈ 0.003/s | ~18 minutes |
+
+**Three adjustments to t*:**
+
+1. **Regime**: trending market collapses λ_exit_side (opposing fills dry up). Shorten t* proportionally.
+2. **Skew level**: the tighter you skew the exit side, the higher the effective λ. Tighter skew → shorter wait.
+3. **Carry ceiling**: if carry_cost(t*) > IOC_exit_cost, cap t* at the carry breakeven time regardless.
+
+Research anchor: Cartea-Jaimungal 2015 — optimal switching time from limit to market order under Poisson arrival.
+
+---
+
+### The Full Per-Fill Exit Pipeline
+
+Each fill triggers a structured pipeline:
+
+```
+Phase 0 — At fill (< 1ms)
+  Record fill price, time, side, notional
+  Compute IOC_exit_cost (fixed threshold for this fill's lifecycle)
+  Start carry clock
+
+Phase 1 — Immediate skew (< 1ms)
+  Skew exit side tighter on ALL quoting venues
+  Existing resting orders on exit side move toward BBO
+
+Phase 2 — Natural exit hunt (ongoing)
+  Maker race on exit side across all venues simultaneously
+  P(fill on any of N venues) = 1 − (1−p)^N
+  Multi-venue internalisation advantage: N venues multiply the fill probability
+
+Phase 3 — Carry clock check (every cycle)
+  expected_carry_to_fill = carry_rate × (1/λ_exit_side)
+  If expected_carry_to_fill > IOC_exit_cost → escalate to Phase 4
+  If trending regime → λ_exit_side drops → escalate faster
+
+Phase 4 — IOC escalation (when carry clock triggers)
+  Cancel ALL maker orders first (avoid double execution)
+  Then fire IOC on the cheapest taker venue
+
+Phase 5 — Post-exit markout feedback (calibrate threshold)
+  Record: did price continue adversely after exit? Or did it revert?
+  Use this to recalibrate the carry threshold over time.
+```
+
+**The double-taker trap**: never fire taker IOC while maker orders are still live. If the maker fills AND the taker fires simultaneously, you have a double-taker round trip on one inventory lot. Cancel first, always.
+
+---
+
+### Cross-Venue Hedge Lifecycle
+
+When you hedge on another venue:
+
+1. Primary fill: Binance bid fills. Net: +1 lot on Binance.
+2. Hedge: fire IOC or limit sell on BitMEX. Net: +1 Binance, −1 BitMEX → net 0.
+3. You are now delta neutral. Done?
+
+**No. The hedge position becomes independent inventory.**
+
+After the Binance primary position exits (via natural fill or IOC), the BitMEX short remains. It is now a naked short on BitMEX. It enters the SAME passive-first exit pipeline — skew buy side on BitMEX, wait for opposing fill, fall back to IOC if carry exceeds cost.
+
+**Double-duty rule**: if a second Binance bid fill arrives while the BitMEX short is still live, the BitMEX short can hedge BOTH Binance fills simultaneously. This is the key internalisation win — the same hedge leg serves multiple primary fills before it needs to be unwound.
+
+**Break-even for same-venue vs cross-venue IOC exit:**
+
+```
+Cross-venue maker pays rebate if fill, saves taker if fill.
+Break-even: P(maker fill on hedge venue) > IOC_exit_cost_on_primary / maker_rebate_on_hedge
+```
+
+On BitMEX (maker rebate = 0.01%, primary taker = 0.05%):
+```
+P_fill × 0.01% − (1−P_fill) × 0.075% > −0.05%
+Solve: P_fill > 29%
+```
+
+If P(maker fill on BitMEX within t*) > 29% for this asset in this regime → cross-venue maker is better. Otherwise → same-venue taker IOC wins.
+
+---
+
+### Sees vs Misses
+
+| Approach | What it sees | What it misses |
+|---|---|---|
+| Hold-and-hope | Zero fees on exit | Carry cost, adverse drift, regime shifts |
+| Always-IOC exit | Bounded drawdown per fill | Unnecessary fee cost when fill rate is high |
+| Fixed-time carry ramp (30s/60s) | Simple time-based urgency | σ_daily variation across assets; liquid asset bleeds in 5s, thin asset safe for 10min |
+| Poisson maker-first timer | Asset-calibrated urgency | Regime adjustment needed (λ collapses in trending) |
+| Multi-venue maker race | Highest P(passive exit) | Requires coordinated cancel-then-IOC across venues |
+
+---
+
+### Professional Standard
+
+| Component | What they do |
+|---|---|
+| Immediate skew | < 1ms after fill — skew exit side on all venues, don't wait |
+| Maker-first timer | t* = −ln(0.05)/λ_exit_side per asset, regime-adjusted |
+| Carry threshold | carry_rate × t* vs IOC_exit_cost — explicit per-asset computation |
+| Multi-venue maker race | Post limit on all hedge venues, cancel all when first fills |
+| IOC as loss-cutting only | Never triggered for "profit-taking" — only when carry > IOC cost |
+| Post-exit markout feedback | Exit decision quality measured: did price continue adversely? |
+| Double-duty hedging | Single hedge leg serves multiple primary fills before unwinding |
+| Internalisation priority | Natural opposing flow > skewed opposing fill > same-venue IOC > cross-venue IOC |
+
+---
+
+### Summary
+
+| | |
+|---|---|
+| **What it is** | Per-fill pipeline to exit the inventory created by each maker fill |
+| **Two events** | Entry edge (locked, permanent) + inventory (must be managed, costs carry) |
+| **Four paths** | Passive recycle (preferred) → trailing stop → predictive exit → IOC (loss-cutting) |
+| **IOC truth** | Always a net loss at standard tier; the decision is certain small loss vs uncertain large loss |
+| **Maker-first timer** | t* = −ln(0.05)/λ_exit_side — per-asset, regime-adjusted, carry-bounded |
+| **Cross-venue hedge** | Hedge position becomes independent inventory after primary exits |
+| **Professional standard** | Maker race across venues → Poisson-calibrated IOC fallback → post-exit feedback loop |
+
+---
+
+### Extension: Same-Venue vs Cross-Venue Exit — Two Modes
+
+Every taker IOC exit has two route choices. Which one you take determines your fee economics. These are not the same thing and neither is always better.
+
+---
+
+#### Mode A — Same-Venue Exit Chain
+
+After a bid fill on Binance USDT-M:
+
+```
+T=0ms     Fill arrives → long +1 Binance
+           Immediately: skew ask side tighter across ALL venues
+           L1 ask order already resting on Binance (normal quote cycle)
+
+T=0 → t*  [Natural exit window]
+           Any natural seller on Binance hits resting ask → flat, zero fee
+           Any opposing fill on another venue → internalised → flat, zero fee
+
+T=t*      [Carry clock fires: carry_rate × t* ≥ IOC_exit_cost]
+           Step 1: post LIMIT SELL at BBO on Binance (maker attempt)
+           Step 2a: fills as maker → zero fee (spread collected both legs)
+           Step 2b: timer expires → IOC SELL on Binance → 0.05% taker fee
+
+Fee outcome:
+  Natural exit:    0%    (both legs maker)
+  Maker-first:     0%    (maker on ask side)
+  IOC fallback:    0.05% (Binance standard taker)
+```
+
+Mode A is the short path: two positions, one venue, one symbol. The fallback fee is capped at 0.05%.
+
+---
+
+#### Mode B — Cross-Venue Hedge Chain
+
+After a bid fill on Binance USDT-M:
+
+```
+T=0ms     Fill arrives → long +1 Binance
+           Simultaneously: skew ask side on ALL venues (same as Mode A)
+           AND: start cross-venue maker attempt on cheapest hedge venue (BitMEX)
+
+T=0 → t*  [Parallel — natural exit AND cross-venue maker attempt running simultaneously]
+
+           Route A: Binance natural ask fills → flat. Cancel cross-venue attempt. Done.
+
+           Route B: Cross-venue maker fills on BitMEX
+             State: +1 Binance long, −1 BitMEX short = delta neutral
+             Continue waiting for Binance natural ask fill (carry ≈ 0, delta = 0)
+             When Binance ask fills naturally:
+               Binance flat. Orphaned: −1 BitMEX short still open.
+               Post LIMIT BUY at BitMEX BBO (maker attempt for unwind)
+               If fills: fully flat. BitMEX earned another +0.01% rebate.
+               If timer expires: IOC BUY on BitMEX → 0.075% taker fee.
+
+           Route C: Cross-venue maker did NOT fill in t*
+             IOC SELL on BitMEX → 0.075% taker fee
+             Delta neutral. Continue natural Binance exit pipeline.
+
+Fee outcome:
+  All-maker path:  −0.01% − 0.01% = −0.02% net income (rebates on both BitMEX legs)
+  Mixed path:      0.075% (one IOC leg) + 0% or +0.01% (other leg)
+  Worst path:      0.075% × 2 = 0.15% round-trip on BitMEX (two IOC legs)
+```
+
+Mode B is the long path: three or four position transitions. The all-maker path earns income. The IOC fallback is significantly more expensive than Mode A (0.075% vs 0.05%).
+
+---
+
+#### Break-Even: When Does Mode B Beat Mode A?
+
+Let P = probability of maker fill on the hedge venue within t*.
+
+```
+Expected cost:
+  Mode A: (1−P_A) × 0.05%
+  Mode B: P_B × (−0.01%) + (1−P_B) × 0.075%
+
+B beats A when:
+  P_B × (−0.01%) + (1−P_B) × 0.075% < (1−P_A) × 0.05%
+
+Assuming P_A ≈ P_B = P (same asset, same skew level):
+  0.075 − 0.085P < 0.05 − 0.05P
+  P > 71%
+```
+
+**Mode B via BitMEX only beats Mode A when P(maker fill cross-venue within t*) > 71%.**
+
+Per-venue break-even table:
+
+| Hedge Venue | Maker fee | Taker fee | Break-even P | Verdict |
+|---|---|---|---|---|
+| BitMEX | −0.01% (rebate) | 0.075% | P > 71% | Use only on high-liquidity assets on BitMEX |
+| Bybit | 0% | ~0.055% | P > 100% | Never beats Mode A — same cost, no rebate |
+| Gate.io | 0% | 0.05% | P > 100% | Same economics as Mode A — no advantage |
+
+For most assets, Mode A wins. Mode B via BitMEX is worth attempting on liquid perpetuals (SUI, SOL, BTC) where BitMEX books are active enough to give P > 71%.
+
+---
+
+#### A/B Measurement Framework
+
+Theory gives the break-even P; live data gives the actual P for each asset. The right approach: run both modes alternately, measure, select the winner per asset.
+
+**Per-fill exit record to log:**
+
+```json
+{
+  "fill_id": "...",
+  "exit_mode": "A_same_venue | B_cross_venue",
+  "exit_method": "natural | maker_first | ioc_fallback",
+  "time_to_exit_ms": 4200,
+  "exit_cost_bps": 0.05,
+  "post_exit_drift_1s_ticks": -0.2
+}
+```
+
+**Per-asset rolling comparison (200-fill window per mode):**
+
+```
+Asset: SOLUSDC
+Mode A (180 fills): avg_exit_cost 0.021%, natural_exit_rate 73%, ioc_rate 27%
+Mode B (180 fills): avg_exit_cost 0.018%, maker_hedge_rate 61%, ioc_rate 39%
+Winner: Mode B (−0.003% per fill advantage → select Mode B for this asset)
+```
+
+**Mode selection rule:**
+
+```python
+def select_exit_mode(asset):
+    if mode_B_fills < 100:         # insufficient data → use A (safe default)
+        return "A"
+    delta = mode_A_cost - mode_B_cost
+    if delta > HYSTERESIS_BPS:     # 0.003% hysteresis prevents flapping
+        return "B"
+    return "A"
+```
+
+Re-evaluate every 1000 fills — regime changes invalidate prior measurements.
+
+---
+
+#### Unified State Machine (All 7 Mechanisms Integrated)
+
+Complete per-fill flow incorporating internalisation, skew, maker-first, carry clock, and regime logic:
+
+```
+FILL_ARRIVES
+│
+├─ T=0ms (always, regardless of mode)
+│   ├─ Skew exit side tighter on ALL venues
+│   ├─ L1 exit order already resting — no action needed
+│   └─ Check UnifiedPositionLedger: did opposing fill already arrive on any venue?
+│       YES → internalised, flat, zero fee. DONE.
+│
+├─ T=0 → carry_threshold [Natural window — all mechanisms run in parallel]
+│   Every opposing fill on any venue → check net delta → if flat: DONE.
+│
+├─ T=carry_threshold [Mode-selected exit]
+│   MODE A path:
+│   ├─ Post LIMIT SELL at BBO on same venue
+│   │   t* = −ln(0.05) / λ_exit_side_same_venue, regime-adjusted
+│   └─ t* expires → IOC SELL on same venue [0.05% taker]
+│
+│   MODE B path:
+│   ├─ Post LIMIT SELL at BBO on BitMEX
+│   │   t* = −ln(0.05) / λ_exit_side_bitmex, regime-adjusted
+│   ├─ Fills as maker → delta neutral → continue waiting for natural Binance exit
+│   │   When Binance exits naturally → unwind BitMEX via maker
+│   └─ t* expires → IOC SELL on BitMEX [0.075% taker — expensive]
+│
+├─ REGIME OVERRIDE (continuous — overrides all timers)
+│   Trending detected → collapse t*, escalate immediately
+│   Near funding window → max hold = 3 min pre-window
+│   σ spike → force_exit Layer A (30→60s ramp) fires, overrides mode logic
+│
+└─ POST-EXIT FEEDBACK (every exit)
+    Record: exit_method, time_to_exit_ms, exit_cost_bps, post_exit_drift_1s
+    Update: λ_exit_side EWMA for this (asset, venue) pair
+    Update: mode A/B rolling cost table → re-evaluate mode selection
+```
+
+---
+
+#### What Needs to Be Built (Implementation Stack)
+
+In priority order — each line is a prerequisite for the line below it:
+
+| # | Component | Purpose | Mode |
+|---|---|---|---|
+| 1 | **λ_exit_side tracker** | Rolling EWMA of opposing fill rate per (asset, venue) — foundational for t* | Both |
+| 2 | **Per-asset t* computation** | −ln(0.05)/λ, regime-conditional, carry-bounded | Both |
+| 3 | **HedgeRouter maker-first phase** | Post limit on hedge venue at t*; cancel → IOC fallback | Mode B |
+| 4 | **Per-fill exit mode tag** | Log `exit_mode` + `exit_method` to fills.jsonl | Both |
+| 5 | **Per-asset A/B rolling stats** | avg_exit_cost_bps per mode over 200-fill window | Both |
+| 6 | **Mode selector** | Hysteresis comparison → runtime mode flag per asset | Both |
+
+The λ_exit_side tracker (item 1) is the foundation everything else builds on. Without it, t* is a guess and mode selection is blind. Start there.
+
+---
+
+## Layer 12 — GPNL Attribution Decomposition
+
+### Naive Failure
+
+The engine is gpnl-negative. What do you do?
+
+Naive response: widen the spread. Or tighten the spread. Or change k_tox. Or run more assets.
+
+None of these are the right first move because "gpnl is negative" contains no information about WHY. You cannot fix what you cannot locate. A day where you bled $5 from adverse selection and earned $2 from spread looks identical in the total to a day where you bled $4 from carry and earned $1 from spread. They require completely different fixes.
+
+Attribution decomposition breaks the total into independently measurable components so each component can be diagnosed and fixed in isolation.
+
+---
+
+### The Decomposition Formula
+
+Every maker fill contributes:
+
+```
+fill_contribution = spread_captured
+                  − adverse_selection
+                  − inventory_carry
+                  − exit_cost
+                  − fee_cost
+```
+
+Summed across all fills in a session:
+
+```
+GPNL = spread_captured_total
+       − adverse_5s_total       (post-fill price drift against position)
+       − inv_holding_total      (cost of carrying net inventory over time)
+       − hedge_slippage_total   (crossing cost on hedge IOC legs)
+       − exit_cost_total        (crossing cost on same-venue IOC exits)
+       − fee_total              (taker fees net of maker rebates)
+       + unexplained_residual   (measurement gap — should be near-zero)
+```
+
+The residual is not rounding error — it is a falsification signal. A large non-zero residual means you have a measurement bug: double-counting, sign flip, missing leg, or parser anomaly. It is the system checking itself.
+
+---
+
+### Component by Component
+
+**1. Spread Captured** (entry edge — always positive if quoting correctly)
+
+```
+spread_captured = Σ_ask_fills (ask_price − mid_at_fill) × size
+                + Σ_bid_fills (mid_at_fill − bid_price) × size
+```
+
+What it measures: how much of the spread you earned on each maker fill. If this is low, your quotes are too close to mid (getting adversely selected before fill) or you are not getting enough fills (too wide).
+
+Diagnostic: `cost_spread_captured_window_usd` in diag.jsonl. Compare to the theoretical half-spread × fill_count — if they diverge, mid is stale at fill time.
+
+---
+
+**2. Adverse Selection** (the primary leak)
+
+```
+adverse_5s = Σ_fills post_fill_price_drift_5s × fill_size × side
+```
+
+What it measures: how much price moved against you in the 5 seconds after each fill. A bid fill followed by price falling = adverse selection on that fill. Averaged across many fills this is the per-fill toxicity cost.
+
+Diagnostic: `cost_adverse_5s_window_usd` in diag.jsonl. If `|adverse_5s| > spread_captured`, the engine is paying more in adverse selection than it earns in spread. This is the primary profitability failure mode.
+
+Actionable fixes: Layer 2 (TailScore), Layer 3 (latency — cancel before sniped), Layer 10 (regime — widen in trending).
+
+---
+
+**3. Inventory Carry** (the holding cost)
+
+```
+inv_holding = Σ_periods net_qty × mark_price × σ_1s × hold_seconds
+```
+
+Measured as a time-integral: every second you hold net inventory, you accumulate carry proportional to inventory size and instantaneous volatility. In calm markets this is small. In trending markets after a bad fill it compounds rapidly.
+
+Diagnostic: `cost_inv_holding_window_usd` in diag.jsonl. High inv_holding relative to spread_captured means inventory is not recycling fast enough (Layer 5, Layer 11).
+
+---
+
+**4. Hedge Slippage** (cost of crossing on hedge venue)
+
+```
+hedge_slippage = Σ_hedge_fills (mid_at_hedge_dispatch − hedge_fill_price) × side × size
+```
+
+What it measures: how much worse than mid you executed on the hedge leg. A large hedge_slippage means your hedge IOC is crossing a wide spread or hitting during adverse conditions on the hedge venue.
+
+Diagnostic: `cost_hedge_slippage_window_usd`. High hedge_slippage while adverse_5s is also high = you are both getting adversely filled AND paying to hedge. Double bleed.
+
+---
+
+**5. Exit Cost** (same-venue IOC crossing)
+
+```
+exit_cost = Σ_exits (mid_at_exit_decision − exit_fill_price) × side × size
+```
+
+Separate from hedge_slippage — this is the cost of exiting on the SAME venue via taker IOC. Isolates same-venue exit decisions from cross-venue hedge decisions.
+
+Diagnostic: `cost_exit_cost_window_usd`. High exit_cost means your IOC exits are crossing wide (adverse timing) or the carry threshold is too conservative (exiting too late, into worse prices).
+
+---
+
+**6. Fee Cost** (net of rebates)
+
+```
+fee_cost = Σ_taker_exits taker_fee × notional
+         − Σ_maker_fills maker_rebate × notional
+```
+
+At standard tier: Binance maker −0.02% (cost), taker +0.05% (cost). Net per round trip ≈ 0.07%.
+At VIP 5: maker rebate, taker ≈ 0.017%. Net ≈ near-zero.
+
+Diagnostic: `cost_fee_rebate_window_usd`. This component should be the smallest — if it is large, VIP tier is too low or too many taker exits are firing.
+
+---
+
+### Fill-Type Classification
+
+After computing per-fill contribution, classify every fill into three types:
+
+```
+fill_contribution_i = spread_captured_i − adverse_5s_i − carry_i − exit_i − fees_i
+
+Type A: fill_contribution_i > 0                    profitable fill
+Type B: −spread_captured_i < fill_contribution_i ≤ 0    break-even (lost some spread)
+Type C: fill_contribution_i < −spread_captured_i   catastrophic (adverse selection > spread)
+```
+
+A healthy session: 70%+ Type A, <10% Type C.
+A bleeding session: <40% Type A, >25% Type C.
+
+Type C fills are the primary target. Track WHAT CONDITION was present at each Type C fill:
+
+| Condition at fill time | Root cause | Fix |
+|---|---|---|
+| VPIN > 0.6 at fill | Informed flow — fill was toxic | Layer 2: raise k_tox, widen |
+| σ_spike in prior 500ms | Stale quote — mid moved before fill | Layer 3: reduce max_quote_age |
+| Queue position = back (q_pos_norm < 0.2) | Sweeper fill | Layer 4.5: restrict deep fills |
+| regime_idx = TRENDING | Structural adverse selection | Layer 10: trending regime param switch |
+| t_held_inv > 60s | Carry accumulation without exit | Layer 11: carry threshold too loose |
+
+---
+
+### The Attribution Waterfall
+
+The professional way to present attribution is as a descending bar chart from left to right:
+
+```
++spread_captured     = +$8.40    ← earned
+−adverse_selection   = −$5.20    ← biggest leak
+−inv_holding         = −$1.80    ← second leak
+−hedge_slippage      = −$0.60
+−exit_cost           = −$0.30
+−fees                = −$0.40
+──────────────────────────────
+GPNL                 = +$0.10    ← what survived
+
+residual             = −$0.03    ← near-zero: attribution clean
+```
+
+This waterfall tells you exactly where to look. In this example: adverse_selection is eating 62% of spread_captured. Fix Layer 2 and Layer 10 first. Inventory carry is second: fix Layer 11 exit timing. Everything else is noise by comparison.
+
+---
+
+### The Residual as a Bug Detector
+
+```
+residual = realized_GPNL − Σ(all 7 components independently measured)
+```
+
+This should be close to zero. If it is not:
+- Large positive residual → a component is underestimating costs (missing leg, sign error)
+- Large negative residual → a component is overestimating costs (double-count)
+
+The residual cannot be tuned away by adjusting the engine. It can only be zeroed by fixing the measurement. This makes it uniquely honest — unlike any engine metric that could be gamed by parameter changes.
+
+---
+
+### Sees vs Misses
+
+| Approach | What it sees | What it misses |
+|---|---|---|
+| "GPNL is negative" | Total outcome | Nothing actionable |
+| Markout analysis alone (Layer 1) | Adverse selection | Carry, exit cost, fees |
+| Full attribution waterfall | All 7 components | Root cause per fill (need classification) |
+| Fill-type classification | Which fills are toxic | Why they are toxic (need condition tags) |
+| Root-cause tagging | Exact condition at each Type C fill | Requires per-fill condition snapshot at fill time |
+
+---
+
+### Professional Standard
+
+| Component | What they do |
+|---|---|
+| 7-component waterfall | Run after every session automatically; visible in the operator dashboard |
+| Reconciliation residual | Non-zero residual triggers measurement audit before any strategy change |
+| Fill-type classification | Every fill labelled A/B/C at session end; Type C % is a health metric |
+| Root-cause tagging | VPIN, σ, queue_pos, regime_idx all snapshotted at fill time and joined to fill record |
+| Component trend | Week-over-week: is adverse_5s improving? Is carry improving? Track each independently |
+| Attribution before tuning | Any parameter change requires attribution delta — did that component improve? |
+
+---
+
+### Summary
+
+| | |
+|---|---|
+| **What it is** | Decomposing GPNL into independently measurable sources of gain and loss |
+| **Formula** | GPNL = spread_captured − adverse_5s − inv_holding − hedge_slippage − exit_cost − fees + residual |
+| **Why it matters** | "GPNL negative" is not actionable; "adverse_5s exceeds spread_captured by 62%" is |
+| **Fill types** | A (profitable) / B (break-even) / C (catastrophic — adverse > spread) |
+| **Root cause** | VPIN / σ spike / queue position / regime at Type C fill time → maps to a specific layer fix |
+| **Residual** | Not noise — a falsification signal for measurement bugs |
+| **Professional standard** | Waterfall report every session + fill-type % + root-cause tag per Type C fill |
+
+---
+
+## Layer 13 — Validation Discipline
+
+### Naive Failure
+
+You make a change. You run the sim. The result is better. You ship it.
+
+Three things just went wrong:
+
+1. The sim may not represent live conditions — if it diverged >25% from live before the change, the "improvement" is fabricated.
+2. Running the sim once on one scenario is not a test — it is a single sample from a random process. One lucky seed looks the same as a real improvement.
+3. If you tried 10 parameter combinations and picked the best, the best will look good by chance even if none of them are genuinely better. You have not validated; you have overfit.
+
+Validation discipline is the framework that separates genuine improvements from noise and luck.
+
+---
+
+### The Validation Ladder
+
+Three rungs. Each one is a necessary condition for the next. You cannot skip a rung.
+
+```
+Rung 1 — Sim
+  Floor test, not proof. Catches structural bugs and direction of effect.
+  Required: ±25% fidelity gate, multi-seed, multi-scenario, baseline comparison.
+  What sim cannot tell you: queue position effects, real latency, partial fills,
+  venue-specific quirks, regime persistence.
+
+Rung 2 — Testnet
+  Real order flow, real latency, real venue behavior. No real money.
+  Required: ≥40 fills, same session conditions as a live session.
+  What testnet cannot tell you: real adverse selection (counterparty risk profile
+  on testnet differs from mainnet), VIP tier fee effects.
+
+Rung 3 — Mainnet (ground truth)
+  The exchange is the final verdict. Every claim about the engine
+  is a hypothesis until confirmed here.
+  Required: capital-safety gate, canary period, attribution delta from the
+  waterfall showing the TARGET component improved.
+```
+
+---
+
+### What Makes a Sim Result Trustworthy
+
+**Condition 1 — ±25% Fidelity Gate (prerequisite)**
+
+Before any sim result is meaningful, the sim must track live GPNL within ±25% per asset on the most recent live session. If sim says +$5 and live said −$8 before the change, the sim is not modeling the engine's actual behavior. Anything it says about the change is noise.
+
+If fidelity is broken, fixing fidelity is priority zero before any strategy work.
+
+**Condition 2 — Multi-Seed WITH Scenario Regen**
+
+A critical distinction that most people get wrong:
+
+```
+Wrong:  run sim with --seed=1, --seed=2, --seed=3 on the SAME scenario
+        → tests engine's internal RNG only, not scenario variance
+        → looks like robustness, is not robustness
+
+Right:  run generate_scenario.py --seed=1, generate_scenario.py --seed=2, ...
+        → generates 3 different market scenarios with different adverse flow,
+          different timing, different regime sequences
+        → true robustness across scenario space
+```
+
+A result that holds on 4 genuine multi-seed scenarios is approximately 2.5× more meaningful than a same-scenario multi-seed result.
+
+**Condition 3 — Multi-Regime Coverage**
+
+At minimum: one calm scenario, one trending scenario, one volatile scenario. A change that improves calm regime and destroys trending regime is not an improvement — it is a regime-conditional bug that will hurt on the next trending session.
+
+**Condition 4 — Baseline Comparison**
+
+The sim result of the change is meaningless without the sim result of the UNCHANGED engine on the same scenarios. The change must be compared to the baseline on identical inputs, not to a prior session's result or a remembered number.
+
+---
+
+### Statistical Validity — Sample Size and Multiple Testing
+
+**The MinTRL problem**
+
+Every Sharpe ratio is estimated from a finite sample. With fewer fills, the estimate is noisier. The Minimum Track Record Length (MinTRL) tells you how many fills you need before the Sharpe is statistically meaningful:
+
+```
+MinTRL ≈ 1 + (z_α / SR_hat)² × (1 + skew correction)
+```
+
+If SR_hat = 1.0 and you want 95% confidence: MinTRL ≈ 60–80 fills minimum, depending on skew.
+
+Below MinTRL, a positive Sharpe could easily be luck. This is why the 40-fill checkpoint exists as a minimum gate before a long run — 40 fills is approximately the minimum to rule out pure chance at typical SR levels for a single-asset session.
+
+**The multiple testing problem**
+
+If you run 10 parameter combinations and pick the best, expect roughly 1 false positive by chance at 5% significance. The more combinations you test, the more likely the winner is noise. This is called p-hacking in research; in trading it is called overfitting.
+
+The Deflated Sharpe Ratio (Bailey & Lopez de Prado 2014) adjusts for this:
+
+```
+DSR = Sharpe × correction_factor(skew, kurtosis, n_trials)
+```
+
+Where n_trials is the number of parameter sets you tested before picking this one. If you tested 10 sets and picked the best, the DSR is meaningfully lower than the raw Sharpe. A high DSR means the result is robust to the search process.
+
+Practical rule: if you changed one thing and validated it on a fresh scenario, DSR ≈ Sharpe. If you swept 20 values and picked the best, DSR tells you whether the winner was genuine.
+
+---
+
+### The Validate-Freeze Approach
+
+Change one thing. Validate it. Freeze it. Then change the next thing.
+
+**Why this is not just good practice — it is the only way to know what worked:**
+
+If you change spread AND k_tox AND deadband simultaneously and the result improves by $3:
+- Which change contributed?
+- Was the improvement from one change and the others were neutral?
+- Did two changes fight each other and the result was net-positive despite internal conflicts?
+- If it regresses next session, which parameter do you roll back?
+
+You cannot answer any of these questions. Simultaneous changes make attribution impossible.
+
+**The four layers in order (from validate-freeze memory):**
+
+```
+Layer 1: Toxicity (k_tox, k_tox_gate, TailScore threshold)
+   → Validate: adverse_5s component improves
+   → Freeze before touching:
+
+Layer 2: EV hold (spread_floor, EV threshold, d* minimum)
+   → Validate: edge per fill improves, fill rate acceptable
+   → Freeze before touching:
+
+Layer 3: P(fill) (deadband, hold_ms, quote depth)
+   → Validate: fill rate improves without adverse selection worsening
+   → Freeze before touching:
+
+Layer 4: Spread width (base_spread, k_vol_spread)
+   → Validate: spread_captured component improves
+```
+
+Only move down the list when the current layer is validated and frozen.
+
+---
+
+### What Invalidates a Validation Result
+
+These are the failure classes that have cost real money in prior cycles:
+
+**Bug-induced prior wins (GH#109 pattern)**
+A bugfix improves the result. But the prior "positive" results depended on the bug. After the fix, prior wins flip to losses because they were artifacts of the broken behavior. Always re-run baselines after a bug fix — a prior win that disappears after a bug fix was a Potemkin result.
+
+**Same-scenario multi-seed**
+Running the same scenario with different seeds tests only engine RNG, not scenario robustness. A result that "held across 4 seeds" on one scenario is approximately as meaningful as 1 seed. The 4-seed improvement will not hold in live when the scenario changes.
+
+**Single-session dependence**
+A parameter tuned to one live session is overfit to that session's regime. Standard test: the improvement must hold on session N+1 (walk-forward) at ≥70% of the magnitude. If the walk-forward result is less than 70% of the training result, the parameter is overfit.
+
+**Sim diverged before validation**
+If the sim was not within ±25% of live before the change, the sim result is meaningless. Validating on a broken sim produces guaranteed-invalid results, even if the numbers look good.
+
+**Optimizing and fixing simultaneously**
+Changing a bug fix AND a parameter improvement in the same iteration makes it impossible to separate their contributions. If it regresses, you cannot know which to roll back. Fix bugs alone, then optimize in the next iteration.
+
+---
+
+### Sees vs Misses
+
+| Approach | What it sees | What it misses |
+|---|---|---|
+| Run sim once, take result | Quick feedback | Scenario variance, fidelity gap, multiple testing inflation |
+| Multi-seed same scenario | Engine RNG robustness | Real scenario diversity — this is not multi-seed |
+| Multi-seed + scenario regen | True scenario robustness | Regime coverage (must add trending/volatile scenarios) |
+| Walk-forward validated | Out-of-sample hold | Whether the target attribution component actually improved |
+| Deflated Sharpe | Adjusts for number of trials | Requires accurate n_trials count — if you forgot some iterations, DSR is understated |
+
+---
+
+### Professional Standard
+
+| Component | What they do |
+|---|---|
+| ±25% fidelity gate | Mandatory before any validation run; broken fidelity = stop all strategy work |
+| Multi-seed scenario regen | Each seed regenerates the full scenario via generate_scenario — not just engine RNG |
+| Multi-regime coverage | Calm + trending + volatile at minimum; never validate on one regime only |
+| Baseline comparison | Every result compared to the unmodified engine on identical inputs |
+| Walk-forward | 70% train / 30% validate; result must hold ≥70% in walk-forward |
+| Deflated Sharpe | Adjusts raw Sharpe for skew, kurtosis, and number of prior trials |
+| MinTRL | Do not interpret Sharpe below the minimum track record length |
+| Validate-freeze | One layer at a time; never change toxicity and spread in the same iteration |
+| Attribution delta | At mainnet: confirm the TARGET component (e.g. adverse_5s) improved, not just total GPNL |
+| Canary period | 10-second startup canary; STOP armed; bleed threshold set before any mainnet run |
+
+---
+
+### Summary
+
+| | |
+|---|---|
+| **What it is** | The discipline of separating genuine improvements from noise, luck, and overfitting |
+| **The ladder** | Sim (floor) → Testnet (real flow) → Mainnet (ground truth). Cannot skip rungs. |
+| **Sim trustworthiness** | ±25% fidelity gate + scenario-regen multi-seed + multi-regime + baseline comparison |
+| **Statistical validity** | MinTRL (minimum fills for Sharpe to be meaningful) + DSR (adjusts for number of trials) |
+| **Validate-freeze** | One change → validate → freeze → next change. Simultaneous changes make attribution impossible. |
+| **Key invalidations** | Bug-induced prior wins / same-scenario seed / single-session overfit / sim diverged / simultaneous changes |
+| **Professional standard** | Walk-forward + DSR + attribution delta (did the target component actually improve?) |
+
