@@ -6,6 +6,9 @@ Market making is way to provide liquidity on perticular asset or in market provi
 
 ## Foundation
 
+> Onboarding read — the have-to-know basics, good enough for juniors.
+> Full end-to-end depth per topic lives in the Lifetime Depth section below.
+
 ### Bid & Ask Price 
 Bid is price buyer is willing to pay for asset & ask is price sellers willing to pay for selling an asset.
 
@@ -91,7 +94,24 @@ For Example - If a person is willing to sell 10 stocks, and in order book 0.01, 
 2. **Liquidity voids -** Thinkly traded zones where price moves fast.
 
 ---
-### Core Architecture of a Market Maker
+
+## Intermediate to Advance — Lifetime Depth (Levels 0–20)
+
+> The senior read. One section per Lifetime Roadmap level, in chronological
+> order, each written end-to-end — navigate to a level and learn it inside out.
+> Program restarted from Level 0 on 2026-07-10.
+> *(Pending)* = not yet taught. *(Interim)* = content moved from Foundation,
+> to be rewritten to full depth when its level is taught. The standalone
+> terminology entries at the end of this section fold into their home levels
+> as those levels are taught.
+
+### Level 0 — Mental Model
+
+*(Pending — restart begins here.)*
+
+#### Core Architecture of a Market Maker
+
+*(Interim — moved from Foundation 2026-07-10; will be rewritten to full end-to-end depth when this level is taught.)*
 
 A market maker continuously posts a bid and an ask around an internal estimate of fair value. The goal is not to predict direction but to price risk, manage inventory, and optimize expected value per trade. The business model is to earn small spreads repeatedly while controlling losses from adverse selection.
 
@@ -202,7 +222,145 @@ A market maker continuously posts a bid and an ask around an internal estimate o
   4. Professional market makers constantly shift between symmetric and asymmetric quoting.
 
 ---
-### Adverse Selection Mechanics
+
+### Level 1 — Market Structure
+
+*(Pending.)*
+
+---
+
+### Level 2 — Limit Order Book
+
+*(Pending.)*
+
+---
+
+### Level 3 — Maker Economics
+
+#### Expected Value Per Fill Framework
+
+*(Interim — moved from Foundation 2026-07-10; will be rewritten to full end-to-end depth when this level is taught.)*
+
+Market makers evaluate profitability on a per-fill basis, not per round trip. Round-trip spread capture is not guaranteed because fills are random and flow may be imbalanced.
+
+**Spread Is Earned in Two Legs -**
+1. Total spread = Ask − Bid.
+2. Half-spread = Spread ÷ 2.
+3. When selling at the ask, only half-spread is earned initially.
+4. The second half of spread is earned only if the opposite side fills later.
+5. Round-trip completion is not guaranteed.
+
+**Per-Fill Expected Value -**
+1. Expected Profit per fill = Half-spread − Expected adverse move.
+2. Half-spread represents immediate compensation.
+3. Expected adverse move represents average post-fill price movement against the position.
+4. If expected adverse move exceeds half-spread, expected value becomes negative.
+5. Spread alone does not determine profitability.
+
+**Why Round-Trip Spread Cannot Be Assumed -**
+1. After a fill, price may move away permanently.
+2. The opposite quote may never execute.
+3. Inventory may need to be closed at worse prices.
+4. Flow imbalance often results in one-sided fills.
+5. Therefore, full spread capture is conditional, not guaranteed.
+
+**Adverse Selection Example -**
+1. Sell at 100.10.
+2. Half-spread earned = 0.10.
+3. Fair value jumps to 100.25.
+4. Adverse move = 0.15.
+5. Net expected value = 0.10 − 0.15 = −0.05.
+6. Even though total spread was 0.20, only half was earned at fill time.
+
+**Core Insight -**
+1. Market makers optimize expected value per fill, not per idealized round trip.
+2. Positive EV requires:
+   - Half-spread > Expected adverse move.
+3. Persistent negative per-fill EV leads to slow capital erosion.
+4. Professional spread setting is based on expected post-fill risk, not theoretical full spread.
+
+---
+
+### Level 4 — Fair Value
+
+#### Fair Value Estimation Mechanics
+
+*(Interim — moved from Foundation 2026-07-10; will be rewritten to full end-to-end depth when this level is taught.)*
+
+Fair value is the internal estimate of what the asset should trade at right now. It is the anchor of all quoting decisions. If fair value is inaccurate or slow to update, the market maker becomes exposed to adverse selection.
+
+**Last Traded Price Is Not Fair Value -**
+1. The last trade is only the most recent agreement between two parties.
+2. It may represent small size or temporary imbalance.
+3. It does not necessarily reflect current consensus value.
+4. Fair value must be continuously estimated, not assumed from the last print.
+
+**Mid Price -**
+1. Mid price = (Best Bid + Best Ask) ÷ 2.
+2. It assumes both sides of the book are equally informative.
+3. It is the simplest baseline estimate of fair value.
+4. Many beginner systems start with mid price.
+5. It does not account for imbalance or short-term pressure.
+
+**Microprice (Order Book Weighted Fair Value) -**
+1. Microprice adjusts fair value based on order book imbalance.
+2. If bid size is significantly larger than ask size:
+   - Fair value shifts above the mid.
+3. If ask size is significantly larger than bid size:
+   - Fair value shifts below the mid.
+4. It captures short-term pressure before price moves.
+5. It reflects probabilistic drift rather than certainty.
+
+**Cross-Exchange Fair Value -**
+1. In crypto, price discovery may occur on different venues.
+2. If one exchange moves first, others become temporarily stale.
+3. Professional market makers monitor multiple venues simultaneously.
+4. Fair value may be derived from:
+   - Fastest exchange.
+   - Weighted average of exchanges.
+5. This reduces arbitrage-based adverse selection.
+
+**Momentum & Trade Flow Adjustment -**
+1. Repeated aggressive buys suggest upward short-term pressure.
+2. Repeated aggressive sells suggest downward short-term pressure.
+3. Fair value shifts in the direction of dominant trade flow.
+4. Flow imbalance can signal predictive short-term drift.
+5. Fair value models often incorporate recent trade intensity.
+
+**Derivatives & Funding Adjustment -**
+1. In perpetual futures, price deviates from spot due to funding.
+2. Fair value must incorporate:
+   - Basis between spot and futures.
+   - Funding expectations.
+3. Ignoring basis leads to systematic mispricing.
+4. Cross-asset relationships influence true fair value.
+
+**Dynamic Updating -**
+1. Fair value must update continuously.
+2. Static estimates create stale quotes.
+3. Slow updates increase adverse selection risk.
+4. High-frequency environments require millisecond-level recalculation.
+5. Accurate and adaptive fair value estimation determines survivability.
+
+**Core Insight -**
+1. Spread is placed around fair value.
+2. If fair value is wrong, spread cannot protect you.
+3. Persistent one-sided fills often signal misestimated fair value.
+4. Fair value accuracy is the foundation of professional market making.
+
+---
+
+### Level 5 — Spread Design
+
+*(Pending.)*
+
+---
+
+### Level 6 — Adverse Selection
+
+#### Adverse Selection Mechanics
+
+*(Interim — moved from Foundation 2026-07-10; will be rewritten to full end-to-end depth when this level is taught.)*
 
 Adverse selection is the structural risk faced by market makers when counterparties possess superior short-term information. It occurs when a trade happens at a quoted price and the market immediately moves against that quote. Understanding this mechanism is critical for survival.
 
@@ -272,8 +430,75 @@ Adverse selection is the structural risk faced by market makers when counterpart
 3. If fair value is uncertain, quoting becomes dangerous.
 4. Survival depends on pricing and reacting to adverse selection risk efficiently.
 
+#### Estimating Expected Adverse Move
+
+*(Interim — moved from Foundation 2026-07-10; will be rewritten to full end-to-end depth when this level is taught.)*
+
+Expected adverse move is the average price movement against a market maker after a fill. It represents the structural cost of providing liquidity and must be estimated accurately for spread optimization.
+
+**What Is Expected Adverse Move -**
+1. It is the average post-fill price movement against the position.
+2. It is conditional on being filled.
+3. It differs for buy fills and sell fills.
+4. It reflects information disadvantage and repricing lag.
+5. Spread must exceed expected adverse move for positive expected value.
+
+**Empirical Estimation Method -**
+1. Record each fill event.
+2. Record price at fixed intervals after fill (e.g., 10ms, 50ms, 100ms, 1s).
+3. Compute average movement against the fill direction.
+4. Estimate conditional expectation of adverse drift.
+5. Update this estimate continuously over time.
+
+**Volatility Proxy Approximation -**
+1. Short-term volatility can serve as a rough proxy.
+2. Higher volatility generally increases expected adverse movement.
+3. Volatility alone does not measure informed toxicity.
+4. Noise volatility and informational volatility must be distinguished.
+5. Pure volatility-based models are incomplete but usable.
+
+**Order Flow Imbalance Conditioning -**
+1. Expected adverse move increases when aggressive flow is imbalanced.
+2. Repeated aggressive buys increase adverse cost after selling.
+3. Repeated aggressive sells increase adverse cost after buying.
+4. Flow-conditioned models outperform static volatility models.
+5. Expected adverse move is state-dependent, not constant.
+
+**Latency Impact -**
+1. Adverse selection has two components:
+   - Information disadvantage.
+   - Latency disadvantage.
+2. Faster quote updates reduce repricing lag.
+3. Reduced lag lowers average adverse movement per fill.
+4. Latency does not eliminate informed flow, but reduces exposure to stale pricing.
+5. Superior latency improves risk-adjusted profitability.
+
+**Competition Dynamics -**
+1. If latency becomes equal across participants:
+   - Spreads compress.
+   - Latency edge disappears.
+2. Edge shifts toward:
+   - Better fair value modeling.
+   - Better flow prediction.
+   - Superior inventory management.
+3. Tighter spreads increase fill frequency.
+4. Higher fill frequency increases inventory turnover.
+5. Profit margins per trade shrink in highly competitive markets.
+
+**Core Insight -**
+1. Expected adverse move is the key driver of spread design.
+2. It must be estimated empirically and dynamically.
+3. Latency reduces repricing risk but does not remove informational disadvantage.
+4. Spread optimization requires understanding conditional post-fill behavior.
+5. Professional market making is fundamentally risk-adjusted pricing of adverse selection.
+
 ---
-### Inventory Risk & Inventory Dynamics
+
+### Level 7 — Inventory
+
+#### Inventory Risk & Inventory Dynamics
+
+*(Interim — moved from Foundation 2026-07-10; will be rewritten to full end-to-end depth when this level is taught.)*
 
 Inventory is the net position accumulated from filled quotes. While market making aims to remain directionally neutral, inventory introduces temporary directional exposure. Proper inventory control is essential for long-term survival.
 
@@ -338,175 +563,9 @@ Inventory is the net position accumulated from filled quotes. While market makin
 3. Inventory awareness must be continuous.
 4. Controlled inventory determines long-term viability.
 
----
-### Fair Value Estimation Mechanics
+#### Inventory-Optimal Quoting (Avellaneda–Stoikov Intuition)
 
-Fair value is the internal estimate of what the asset should trade at right now. It is the anchor of all quoting decisions. If fair value is inaccurate or slow to update, the market maker becomes exposed to adverse selection.
-
-**Last Traded Price Is Not Fair Value -**
-1. The last trade is only the most recent agreement between two parties.
-2. It may represent small size or temporary imbalance.
-3. It does not necessarily reflect current consensus value.
-4. Fair value must be continuously estimated, not assumed from the last print.
-
-**Mid Price -**
-1. Mid price = (Best Bid + Best Ask) ÷ 2.
-2. It assumes both sides of the book are equally informative.
-3. It is the simplest baseline estimate of fair value.
-4. Many beginner systems start with mid price.
-5. It does not account for imbalance or short-term pressure.
-
-**Microprice (Order Book Weighted Fair Value) -**
-1. Microprice adjusts fair value based on order book imbalance.
-2. If bid size is significantly larger than ask size:
-   - Fair value shifts above the mid.
-3. If ask size is significantly larger than bid size:
-   - Fair value shifts below the mid.
-4. It captures short-term pressure before price moves.
-5. It reflects probabilistic drift rather than certainty.
-
-**Cross-Exchange Fair Value -**
-1. In crypto, price discovery may occur on different venues.
-2. If one exchange moves first, others become temporarily stale.
-3. Professional market makers monitor multiple venues simultaneously.
-4. Fair value may be derived from:
-   - Fastest exchange.
-   - Weighted average of exchanges.
-5. This reduces arbitrage-based adverse selection.
-
-**Momentum & Trade Flow Adjustment -**
-1. Repeated aggressive buys suggest upward short-term pressure.
-2. Repeated aggressive sells suggest downward short-term pressure.
-3. Fair value shifts in the direction of dominant trade flow.
-4. Flow imbalance can signal predictive short-term drift.
-5. Fair value models often incorporate recent trade intensity.
-
-**Derivatives & Funding Adjustment -**
-1. In perpetual futures, price deviates from spot due to funding.
-2. Fair value must incorporate:
-   - Basis between spot and futures.
-   - Funding expectations.
-3. Ignoring basis leads to systematic mispricing.
-4. Cross-asset relationships influence true fair value.
-
-**Dynamic Updating -**
-1. Fair value must update continuously.
-2. Static estimates create stale quotes.
-3. Slow updates increase adverse selection risk.
-4. High-frequency environments require millisecond-level recalculation.
-5. Accurate and adaptive fair value estimation determines survivability.
-
-**Core Insight -**
-1. Spread is placed around fair value.
-2. If fair value is wrong, spread cannot protect you.
-3. Persistent one-sided fills often signal misestimated fair value.
-4. Fair value accuracy is the foundation of professional market making.
-
----
-### Expected Value Per Fill Framework
-
-Market makers evaluate profitability on a per-fill basis, not per round trip. Round-trip spread capture is not guaranteed because fills are random and flow may be imbalanced.
-
-**Spread Is Earned in Two Legs -**
-1. Total spread = Ask − Bid.
-2. Half-spread = Spread ÷ 2.
-3. When selling at the ask, only half-spread is earned initially.
-4. The second half of spread is earned only if the opposite side fills later.
-5. Round-trip completion is not guaranteed.
-
-**Per-Fill Expected Value -**
-1. Expected Profit per fill = Half-spread − Expected adverse move.
-2. Half-spread represents immediate compensation.
-3. Expected adverse move represents average post-fill price movement against the position.
-4. If expected adverse move exceeds half-spread, expected value becomes negative.
-5. Spread alone does not determine profitability.
-
-**Why Round-Trip Spread Cannot Be Assumed -**
-1. After a fill, price may move away permanently.
-2. The opposite quote may never execute.
-3. Inventory may need to be closed at worse prices.
-4. Flow imbalance often results in one-sided fills.
-5. Therefore, full spread capture is conditional, not guaranteed.
-
-**Adverse Selection Example -**
-1. Sell at 100.10.
-2. Half-spread earned = 0.10.
-3. Fair value jumps to 100.25.
-4. Adverse move = 0.15.
-5. Net expected value = 0.10 − 0.15 = −0.05.
-6. Even though total spread was 0.20, only half was earned at fill time.
-
-**Core Insight -**
-1. Market makers optimize expected value per fill, not per idealized round trip.
-2. Positive EV requires:
-   - Half-spread > Expected adverse move.
-3. Persistent negative per-fill EV leads to slow capital erosion.
-4. Professional spread setting is based on expected post-fill risk, not theoretical full spread.
-
-
----
-### Estimating Expected Adverse Move
-
-Expected adverse move is the average price movement against a market maker after a fill. It represents the structural cost of providing liquidity and must be estimated accurately for spread optimization.
-
-**What Is Expected Adverse Move -**
-1. It is the average post-fill price movement against the position.
-2. It is conditional on being filled.
-3. It differs for buy fills and sell fills.
-4. It reflects information disadvantage and repricing lag.
-5. Spread must exceed expected adverse move for positive expected value.
-
-**Empirical Estimation Method -**
-1. Record each fill event.
-2. Record price at fixed intervals after fill (e.g., 10ms, 50ms, 100ms, 1s).
-3. Compute average movement against the fill direction.
-4. Estimate conditional expectation of adverse drift.
-5. Update this estimate continuously over time.
-
-**Volatility Proxy Approximation -**
-1. Short-term volatility can serve as a rough proxy.
-2. Higher volatility generally increases expected adverse movement.
-3. Volatility alone does not measure informed toxicity.
-4. Noise volatility and informational volatility must be distinguished.
-5. Pure volatility-based models are incomplete but usable.
-
-**Order Flow Imbalance Conditioning -**
-1. Expected adverse move increases when aggressive flow is imbalanced.
-2. Repeated aggressive buys increase adverse cost after selling.
-3. Repeated aggressive sells increase adverse cost after buying.
-4. Flow-conditioned models outperform static volatility models.
-5. Expected adverse move is state-dependent, not constant.
-
-**Latency Impact -**
-1. Adverse selection has two components:
-   - Information disadvantage.
-   - Latency disadvantage.
-2. Faster quote updates reduce repricing lag.
-3. Reduced lag lowers average adverse movement per fill.
-4. Latency does not eliminate informed flow, but reduces exposure to stale pricing.
-5. Superior latency improves risk-adjusted profitability.
-
-**Competition Dynamics -**
-1. If latency becomes equal across participants:
-   - Spreads compress.
-   - Latency edge disappears.
-2. Edge shifts toward:
-   - Better fair value modeling.
-   - Better flow prediction.
-   - Superior inventory management.
-3. Tighter spreads increase fill frequency.
-4. Higher fill frequency increases inventory turnover.
-5. Profit margins per trade shrink in highly competitive markets.
-
-**Core Insight -**
-1. Expected adverse move is the key driver of spread design.
-2. It must be estimated empirically and dynamically.
-3. Latency reduces repricing risk but does not remove informational disadvantage.
-4. Spread optimization requires understanding conditional post-fill behavior.
-5. Professional market making is fundamentally risk-adjusted pricing of adverse selection.
-
----
-### Inventory-Optimal Quoting (Avellaneda–Stoikov Intuition)
+*(Interim — moved from Foundation 2026-07-10; will be rewritten to full end-to-end depth when this level is taught.)*
 
 Inventory-optimal quoting formalizes how market makers adjust quotes dynamically based on inventory, volatility, and risk tolerance. The objective is to maximize expected spread capture while penalizing inventory risk.
 
@@ -566,85 +625,25 @@ Inventory-optimal quoting formalizes how market makers adjust quotes dynamically
 4. Professional market making embeds inventory into pricing mathematically.
 5. Avellaneda–Stoikov provides a foundational framework for dynamic optimal quoting.
 
+---
+
+### Level 8 — Queue / Fill Probability
+
+*(Pending.)*
 
 ---
-### Multi-Asset & Cross-Venue Inventory Control
 
-In real crypto market making, inventory is not isolated to a single asset or exchange. Risk must be evaluated globally across venues, instruments, and correlated exposures. True inventory management is multidimensional.
+### Level 9 — Latency / Staleness
 
-**Global Inventory Concept -**
-1. Inventory must be evaluated as net exposure across all venues.
-2. Example:
-   - +5 BTC on Exchange A.
-   - −3 BTC on Exchange B.
-   - Net exposure = +2 BTC.
-3. Risk is based on net exposure, not isolated venue positions.
-4. Cross-venue netting reduces apparent exposure.
-5. Inventory management operates at portfolio level.
-
-**Cross-Venue Adverse Selection -**
-1. Price discovery may occur on one exchange first.
-2. Other venues temporarily become stale.
-3. Arbitrageurs exploit stale quotes.
-4. Fair value must incorporate cross-venue data.
-5. Latency differences increase venue-specific adverse selection risk.
-
-**Hedging Across Venues -**
-1. Inventory from one venue can be neutralized on another.
-2. Hedging reduces directional exposure.
-3. Hedging introduces:
-   - Taker fees.
-   - Slippage risk.
-   - Latency mismatch risk.
-4. Hedging decisions should be threshold-based.
-5. Continuous per-fill hedging is inefficient.
-
-**Basis Risk -**
-1. Basis = price difference between venues or instruments.
-2. Even if net quantity is zero, price divergence creates risk.
-3. Basis widening introduces hedge imperfection.
-4. Volatile basis increases inventory risk.
-5. Fair value models must account for cross-venue spread.
-
-**Funding & Derivative Risk -**
-1. Spot and perpetual futures differ due to funding.
-2. Long spot and short perp may appear price-neutral.
-3. Funding payments create additional exposure.
-4. Inventory becomes multidimensional:
-   - Price risk.
-   - Funding risk.
-   - Basis risk.
-5. Ignoring funding creates structural PnL drift.
-
-**Liquidity & Operational Risk -**
-1. Liquidity may differ across exchanges.
-2. If one venue halts trading, hedge may fail.
-3. Exchange-specific risk impacts inventory stability.
-4. Capital allocation affects quoting aggressiveness.
-5. Inventory risk includes operational and counterparty components.
-
-**Fair Value Adjustment Across Venues -**
-1. Fair value should reflect leading price discovery venue.
-2. Weighted multi-exchange pricing reduces arbitrage risk.
-3. Stable basis may not require spread widening.
-4. Volatile basis may require:
-   - Spread widening.
-   - Stronger skewing.
-5. Cross-venue models function as distributed price engines.
-
-**Core Insight -**
-1. Price-neutral does not mean risk-neutral.
-2. Inventory risk extends beyond raw position size.
-3. Professional crypto market making is portfolio-based.
-4. Risk must be evaluated across:
-   - Venues.
-   - Instruments.
-   - Correlation structures.
-5. Multi-venue inventory control is essential for scalability.
-
+*(Pending.)*
 
 ---
-### Market Making Engine Architecture
+
+### Level 10 — Execution Engineering
+
+#### Market Making Engine Architecture
+
+*(Interim — moved from Foundation 2026-07-10; will be rewritten to full end-to-end depth when this level is taught.)*
 
 A professional market making system is a coordinated set of modules that operate continuously. It is not simply placing bid and ask orders. The engine integrates market data, fair value estimation, inventory control, execution management, and risk safeguards.
 
@@ -729,10 +728,148 @@ A professional market making system is a coordinated set of modules that operate
 5. Engine design determines survivability in competitive markets.
 
 ---
-## Intermediate to Advance (Covers depth for every layer)
+
+### Level 11 — Post-Fill Management
+
+*(Pending.)*
 
 ---
-### VPIN — Volume-synchronized Probability of Informed Trading
+
+### Level 12 — Asset Selection
+
+*(Pending.)*
+
+---
+
+### Level 13 — Simulation
+
+*(Pending.)*
+
+---
+
+### Level 14 — Statistical Validation
+
+*(Pending.)*
+
+---
+
+### Level 15 — Adaptive Control
+
+*(Pending.)*
+
+---
+
+### Level 16 — Cross-Venue / Cross-Asset
+
+#### Multi-Asset & Cross-Venue Inventory Control
+
+*(Interim — moved from Foundation 2026-07-10; will be rewritten to full end-to-end depth when this level is taught.)*
+
+In real crypto market making, inventory is not isolated to a single asset or exchange. Risk must be evaluated globally across venues, instruments, and correlated exposures. True inventory management is multidimensional.
+
+**Global Inventory Concept -**
+1. Inventory must be evaluated as net exposure across all venues.
+2. Example:
+   - +5 BTC on Exchange A.
+   - −3 BTC on Exchange B.
+   - Net exposure = +2 BTC.
+3. Risk is based on net exposure, not isolated venue positions.
+4. Cross-venue netting reduces apparent exposure.
+5. Inventory management operates at portfolio level.
+
+**Cross-Venue Adverse Selection -**
+1. Price discovery may occur on one exchange first.
+2. Other venues temporarily become stale.
+3. Arbitrageurs exploit stale quotes.
+4. Fair value must incorporate cross-venue data.
+5. Latency differences increase venue-specific adverse selection risk.
+
+**Hedging Across Venues -**
+1. Inventory from one venue can be neutralized on another.
+2. Hedging reduces directional exposure.
+3. Hedging introduces:
+   - Taker fees.
+   - Slippage risk.
+   - Latency mismatch risk.
+4. Hedging decisions should be threshold-based.
+5. Continuous per-fill hedging is inefficient.
+
+**Basis Risk -**
+1. Basis = price difference between venues or instruments.
+2. Even if net quantity is zero, price divergence creates risk.
+3. Basis widening introduces hedge imperfection.
+4. Volatile basis increases inventory risk.
+5. Fair value models must account for cross-venue spread.
+
+**Funding & Derivative Risk -**
+1. Spot and perpetual futures differ due to funding.
+2. Long spot and short perp may appear price-neutral.
+3. Funding payments create additional exposure.
+4. Inventory becomes multidimensional:
+   - Price risk.
+   - Funding risk.
+   - Basis risk.
+5. Ignoring funding creates structural PnL drift.
+
+**Liquidity & Operational Risk -**
+1. Liquidity may differ across exchanges.
+2. If one venue halts trading, hedge may fail.
+3. Exchange-specific risk impacts inventory stability.
+4. Capital allocation affects quoting aggressiveness.
+5. Inventory risk includes operational and counterparty components.
+
+**Fair Value Adjustment Across Venues -**
+1. Fair value should reflect leading price discovery venue.
+2. Weighted multi-exchange pricing reduces arbitrage risk.
+3. Stable basis may not require spread widening.
+4. Volatile basis may require:
+   - Spread widening.
+   - Stronger skewing.
+5. Cross-venue models function as distributed price engines.
+
+**Core Insight -**
+1. Price-neutral does not mean risk-neutral.
+2. Inventory risk extends beyond raw position size.
+3. Professional crypto market making is portfolio-based.
+4. Risk must be evaluated across:
+   - Venues.
+   - Instruments.
+   - Correlation structures.
+5. Multi-venue inventory control is essential for scalability.
+
+---
+
+### Level 17 — Risk Management
+
+*(Pending.)*
+
+---
+
+### Level 18 — Operations
+
+*(Pending.)*
+
+---
+
+### Level 19 — Business Economics
+
+*(Pending.)*
+
+---
+
+### Level 20 — Institutional Reality
+
+*(Pending.)*
+
+---
+
+### Standalone Terminology Entries — pending fold into home levels
+
+> Fold routing: VPIN / OFI / p_tox / TailScore / Adverse Markout → Level 6 ·
+> EWMA / Distribution → Level 14 · Market Regime → Level 15 · CVaR99 → Level 17 ·
+> Defensive Alpha → Level 15.
+
+#### VPIN — Volume-synchronized Probability of Informed Trading
 
 In any market, every trade is made by one of two types of participants:
 - **Noise trader** — buying or selling for their own reasons (rebalancing, cash need, random). No special information about where price is going.
@@ -763,7 +900,7 @@ Time is a poor measure of information arrival. In a slow market, 1 minute might 
 
 ---
 
-### OFI — Order Flow Imbalance
+#### OFI — Order Flow Imbalance
 
 VPIN looks at completed trades — what actually got executed. OFI looks at the order book itself — what is being added and removed before any trade happens.
 
@@ -790,7 +927,7 @@ Together, OFI and VPIN give two angles on the same question: who is about to tra
 
 ---
 
-### EWMA — Exponentially Weighted Moving Average
+#### EWMA — Exponentially Weighted Moving Average
 
 A regular average treats all data points equally — a trade from 10 minutes ago counts as much as a trade that just happened. EWMA says: recent data matters more than old data. Each new data point gets high weight. Older points decay.
 
@@ -816,7 +953,7 @@ Used throughout market making:
 
 ---
 
-### Market Regime
+#### Market Regime
 
 Regime means: what mode is the market in right now? A market maker faces completely different conditions depending on the regime. Three regimes matter:
 
@@ -832,7 +969,7 @@ Regime means: what mode is the market in right now? A market maker faces complet
 
 ---
 
-### Distribution
+#### Distribution
 
 A distribution is the full picture of a set of values — not just the average, but where most values cluster, how spread out they are, and how extreme the worst cases get.
 
@@ -850,7 +987,7 @@ Rare fills:   -30 to -50 ticks ← the tail — infrequent but severe
 
 ---
 
-### p_tox — Probability of Toxic Flow
+#### p_tox — Probability of Toxic Flow
 
 A number between 0 and 1 computed by the engine before placing any quote. It answers: given everything observable right now — VPIN, recent drift, volatility — what is the probability that the next fill will come from an informed counterparty who knows price is about to move against the engine?
 
@@ -866,7 +1003,7 @@ p_tox summarises all toxicity signals (flow, drift, volatility) into one score t
 
 ---
 
-### CVaR99 — Conditional Value at Risk at 99th Percentile
+#### CVaR99 — Conditional Value at Risk at 99th Percentile
 
 Regular average tells you the typical adverse move. CVaR99 tells you: in the worst 1% of fills on this asset, what is the average loss?
 
@@ -888,7 +1025,7 @@ A system that ignores CVaR99 and only tracks average adverse move will systemati
 
 ---
 
-### TailScore
+#### TailScore
 
 Combines p_tox and CVaR99 into one number capturing both how likely a toxic fill is AND how bad it will be:
 
@@ -909,7 +1046,7 @@ TailScore drives spread widening continuously — not a binary cutoff. High Tail
 
 ---
 
-### Adverse Markout
+#### Adverse Markout
 
 Adverse markout is the post-fill price movement against your position direction, measured at a fixed time horizon.
 
@@ -934,7 +1071,7 @@ fill_ev = half_spread − average_adverse_markout
 If adverse markout > half_spread → losing money on every fill even if spread looks wide enough.
 
 ---
-### Defensive Alpha (Expected Value Protection Layer)
+#### Defensive Alpha (Expected Value Protection Layer)
 
 A professional market making system must continuously evaluate whether providing liquidity is profitable under current market conditions. Defensive alpha is the layer that estimates adverse selection risk and prevents participation in negative expected value states.
 
@@ -1063,9 +1200,13 @@ It connects:
 Defensive alpha does not create profit.  
 It ensures the system only trades when the spread compensates for adverse selection.
 
-
 ---
+
 ## Market making Profitability
+
+> KCMME-specific deep-dive (Layers 0–13, complete 2026-07-09) — the applied
+> record of why the engine was GPNL-negative. Canonical concept depth lives
+> in the Lifetime Depth section above.
 
 ---
 
@@ -1733,11 +1874,10 @@ Key property: the system never stops quoting. When TailScore is extreme it quote
 | **Professional standard** | Per-asset CVaR99 live model + per-asset TailScore threshold + continuous proportional spread response |
 
 ---
----
 
-## Layer 3 — Latency / Stale Quote Exposure
+### Layer 3 — Latency / Stale Quote Exposure
 
-### What It Is
+#### What It Is
 
 A stale quote is a resting order on the exchange whose price no longer reflects fair
 value — because fair value moved on another venue, but the cancel has not yet reached
@@ -1762,7 +1902,7 @@ moves after a fill. The cause is completely different — and so is the fix.
 
 ---
 
-### Why the Naive Approach Fails
+#### Why the Naive Approach Fails
 
 Naive: set a spread and assume any adverse fill was from informed flow. Blame the
 counterparty for having an edge.
@@ -1777,7 +1917,7 @@ and act faster than the cancel travels to the exchange.
 
 ---
 
-### The Three Components of the Stale Window
+#### The Three Components of the Stale Window
 
 ```
 Total stale window = detection lag + network RTT + exchange processing time
@@ -1796,7 +1936,7 @@ arb's aggressive order — whoever arrives first at the exchange queue wins.
 
 ---
 
-### Quantifying Stale Fill Loss
+#### Quantifying Stale Fill Loss
 
 ```
 stale_loss = P(fill before cancel ack) × E[adverse move in the stale window]
@@ -1818,7 +1958,7 @@ flow is counted.
 
 ---
 
-### Why 1ms Latency Difference Is Enough
+#### Why 1ms Latency Difference Is Enough
 
 Even a 1ms advantage lets the arb hunt stale quotes:
 
@@ -1841,7 +1981,7 @@ are always profitable for the arb regardless of fees.
 
 ---
 
-### Quote Age as the Diagnostic Signal
+#### Quote Age as the Diagnostic Signal
 
 Without tracking quote age at fill time, stale losses and informed losses look
 identical in markout analysis. Both show large adverse moves after a fill.
@@ -1860,7 +2000,7 @@ Reducing cancel latency or tightening `max_quote_age_ms` is the fix.
 
 ---
 
-### How Faster Cancel Speed Changes Spread Economics
+#### How Faster Cancel Speed Changes Spread Economics
 
 Faster cancel speed → smaller stale window → smaller expected stale loss → lower
 spread floor required to remain EV-positive.
@@ -1876,7 +2016,7 @@ networking) translates directly into competitive quoting — not speed for its o
 
 ---
 
-### Sees vs Misses
+#### Sees vs Misses
 
 | Method | What it sees | What it misses |
 |---|---|---|
@@ -1887,7 +2027,7 @@ networking) translates directly into competitive quoting — not speed for its o
 
 ---
 
-### Professional Standard — Jane Street / Citadel Level
+#### Professional Standard — Jane Street / Citadel Level
 
 | Component | What they do |
 |---|---|
@@ -1904,7 +2044,7 @@ the economics are direct.
 
 ---
 
-### Summary
+#### Summary
 
 | | |
 |---|---|
@@ -1917,11 +2057,10 @@ the economics are direct.
 | **Professional standard** | Sub-ms detection, measured cancel ack latency, explicit stale loss attribution, spread floor set from measured latency |
 
 ---
----
 
-## Layer 4 — Spread vs Adverse Move
+### Layer 4 — Spread vs Adverse Move
 
-### What It Is
+#### What It Is
 
 The spread is the only revenue a market maker earns. The adverse move — the price
 movement against you after a fill — is the primary cost. If the adverse move exceeds
@@ -1937,7 +2076,7 @@ every fill bleeds. Too wide → no fills, no revenue.
 
 ---
 
-### Why the Naive Approach Fails
+#### Why the Naive Approach Fails
 
 Naive: pick a spread that "looks competitive" by watching what others quote.
 
@@ -1952,7 +2091,7 @@ being filled right now.
 
 ---
 
-### Layer 1 — Half-Spread and the Round-Trip Problem
+#### Layer 1 — Half-Spread and the Round-Trip Problem
 
 At fill time you capture half the spread — not the full spread. If you quote
 bid=99, ask=101, and the ask fills, you earned 1 tick (half of the 2-tick spread).
@@ -1977,7 +2116,7 @@ distribution that has fat tails.
 
 ---
 
-### Layer 2 — Spread Floor
+#### Layer 2 — Spread Floor
 
 The spread floor is the minimum spread below which EV is structurally negative
 regardless of any signal:
@@ -2006,7 +2145,7 @@ current conditions, not historical averages.
 
 ---
 
-### Layer 3 — Volatility-Adjusted Spread
+#### Layer 3 — Volatility-Adjusted Spread
 
 When price is jumping, adverse moves are larger. The spread floor must scale:
 
@@ -2033,7 +2172,7 @@ when vol is high. The spread needs to respond to toxicity specifically, not just
 
 ---
 
-### Layer 4 — Full Spread: Floor + Vol + Toxicity
+#### Layer 4 — Full Spread: Floor + Vol + Toxicity
 
 The complete spread formula:
 
@@ -2070,7 +2209,7 @@ of each fill, not average risk.
 
 ---
 
-### The Fill Rate Trade-Off
+#### The Fill Rate Trade-Off
 
 Spread too wide → fills stop. `fill_ev` per fill can be positive but revenue per
 unit time collapses:
@@ -2090,7 +2229,7 @@ depth, volatility, and how competitive other market makers are at each level.
 
 ---
 
-### Sees vs Misses
+#### Sees vs Misses
 
 | Method | What it sees | What it misses |
 |---|---|---|
@@ -2102,7 +2241,7 @@ depth, volatility, and how competitive other market makers are at each level.
 
 ---
 
-### Professional Standard — Jane Street / Citadel Level
+#### Professional Standard — Jane Street / Citadel Level
 
 | Component | What they do |
 |---|---|
@@ -2119,7 +2258,7 @@ ratio. p_tox and q̂99 are live model outputs. Nothing is static config.
 
 ---
 
-### Summary
+#### Summary
 
 | | |
 |---|---|
@@ -2131,11 +2270,10 @@ ratio. p_tox and q̂99 are live model outputs. Nothing is static config.
 | **Professional standard** | Per-asset floor from live markouts + vol multiplier + TailScore delta_adv + fill rate joint optimisation |
 
 ---
----
 
-## Layer 4.5 — Queue / Fill Quality
+### Layer 4.5 — Queue / Fill Quality
 
-### What It Is
+#### What It Is
 
 Queue position determines which fills you get, not just whether you fill. At any
 price level, orders sit in a FIFO queue — the exchange fills them front to back as
@@ -2147,7 +2285,7 @@ The worst fills go to whoever is at the back of a queue that just got swept enti
 
 ---
 
-### Why the Naive Approach Fails
+#### Why the Naive Approach Fails
 
 Naive: always quote at BBO — tightest price = most fills = most revenue.
 
@@ -2163,7 +2301,7 @@ BBO level first. Fewer fills, but structurally cleaner.
 
 ---
 
-### Layer 1 — What Queue Position Controls
+#### Layer 1 — What Queue Position Controls
 
 At price level 101 (ask side), orders queue in FIFO order:
 ```
@@ -2186,7 +2324,7 @@ sweeps. Hard fills (deep queue, away from BBO) are cleaner on average.
 
 ---
 
-### Layer 2 — BBO vs Deep Fill Trade-Off
+#### Layer 2 — BBO vs Deep Fill Trade-Off
 
 ```
 BBO quote (101):    P(fill) high  |  Fills on ANY aggressor including small uninformed
@@ -2204,7 +2342,7 @@ the spread premium is captured.
 
 ---
 
-### Layer 3 — Cancel/Replace Destroys Queue Position
+#### Layer 3 — Cancel/Replace Destroys Queue Position
 
 Every cancel+replace at the same price resets you to the back of the FIFO queue:
 
@@ -2224,7 +2362,7 @@ replaced — specifically to prevent this compounding queue-destruction pattern.
 
 ---
 
-### Layer 4 — Sweep Fill Detection
+#### Layer 4 — Sweep Fill Detection
 
 The clearest toxic fill signal available without any model: being filled at the
 same time as the entire level.
@@ -2248,7 +2386,7 @@ structurally — independent of post-fill drift measurement.
 
 ---
 
-### Layer 5 — Queue-Aware P(fill) Model
+#### Layer 5 — Queue-Aware P(fill) Model
 
 The full model combines queue position with fill probability:
 
@@ -2266,7 +2404,7 @@ but their product adjusted for expected fill quality at each queue depth.
 
 ---
 
-### Sees vs Misses
+#### Sees vs Misses
 
 | Method | What it sees | What it misses |
 |---|---|---|
@@ -2278,7 +2416,7 @@ but their product adjusted for expected fill quality at each queue depth.
 
 ---
 
-### Professional Standard — Jane Street / Citadel Level
+#### Professional Standard — Jane Street / Citadel Level
 
 | Component | What they do |
 |---|---|
@@ -2291,7 +2429,7 @@ but their product adjusted for expected fill quality at each queue depth.
 
 ---
 
-### Summary
+#### Summary
 
 | | |
 |---|---|
@@ -2303,11 +2441,10 @@ but their product adjusted for expected fill quality at each queue depth.
 | **Professional standard** | Queue-aware P(fill) + sweep detection + min lifetime + spread calibrated by queue depth |
 
 ---
----
 
-## Layer 5 — Inventory Carry, Single Venue
+### Layer 5 — Inventory Carry, Single Venue
 
-### What It Is
+#### What It Is
 
 Every position you hold has a carry cost: the expected mark-to-market loss from
 price moving against the position while you hold it. A market maker with inventory
@@ -2316,7 +2453,7 @@ must compensate for that exposure, and the quotes must continuously work to redu
 
 ---
 
-### Why the Naive Approach Fails
+#### Why the Naive Approach Fails
 
 Naive: quote symmetrically around fair value regardless of inventory. Half-spread
 applied equally on both sides every cycle.
@@ -2335,7 +2472,7 @@ Net carry loss: 240 tick-equivalents. All from holding, not from being picked of
 
 ---
 
-### Layer 1 — What Carry Actually Costs
+#### Layer 1 — What Carry Actually Costs
 
 Every tick a position is held, it is exposed to price movement.
 
@@ -2356,7 +2493,7 @@ that cumulates.
 
 ---
 
-### Layer 2 — Reservation Price Is the Fix
+#### Layer 2 — Reservation Price Is the Fix
 
 Stop quoting around fair value. Quote around your reservation price — the price at
 which your inventory risk is already priced in.
@@ -2396,7 +2533,7 @@ No quotes pulled. No sides disabled. Continuous.
 
 ---
 
-### Layer 3 — Spread Also Widens With Inventory
+#### Layer 3 — Spread Also Widens With Inventory
 
 Skew alone is not enough. Each additional fill on the wrong side deepens exposure.
 The spread must widen to compensate for the carry risk each new fill adds.
@@ -2418,7 +2555,7 @@ the right-direction fills easier. Both active simultaneously.
 
 ---
 
-### Layer 4 — Inventory Urgency in 24/7 Crypto
+#### Layer 4 — Inventory Urgency in 24/7 Crypto
 
 Avellaneda-Stoikov uses `(T−t)` — time to session end. Equity markets close at 4pm.
 Crypto never closes. Professional crypto market makers do not shut down to create a
@@ -2440,7 +2577,7 @@ position into a funding event that goes against it is a real periodic carry cost
 
 ---
 
-### Sees vs Misses
+#### Sees vs Misses
 
 | Method | What it sees | What it misses |
 |---|---|---|
@@ -2452,7 +2589,7 @@ position into a funding event that goes against it is a real periodic carry cost
 
 ---
 
-### Professional Standard
+#### Professional Standard
 
 | Component | What they do |
 |---|---|
@@ -2465,7 +2602,7 @@ position into a funding event that goes against it is a real periodic carry cost
 
 ---
 
-### Summary
+#### Summary
 
 | | |
 |---|---|
@@ -2479,13 +2616,11 @@ position into a funding event that goes against it is a real periodic carry cost
 
 ---
 
----
-
-## Layer 5.5 — Cross-Venue Delta Neutrality
+### Layer 5.5 — Cross-Venue Delta Neutrality
 
 ---
 
-### What It Is
+#### What It Is
 
 When a market maker quotes on multiple venues simultaneously, watching individual venue inventory is not enough. You can be flat on Bybit (+0 SUI), flat on Binance (+0 SUI), and long 70 contracts on BitMEX — from Bybit's view, nothing looks wrong. From the system's view, you are carrying $4,200 of directional SUI risk with no mechanism to exit it.
 
@@ -2499,7 +2634,7 @@ Getting this wrong means the engine is unknowingly running a directional book �
 
 ---
 
-### Why the Naive Approach Fails
+#### Why the Naive Approach Fails
 
 A beginner watches each venue separately and panics when any single venue exceeds an inventory limit.
 
@@ -2509,7 +2644,7 @@ A beginner watches each venue separately and panics when any single venue exceed
 
 ---
 
-### How It Works
+#### How It Works
 
 **Layer 1 — Net delta check**: sum signed position across all venues every cycle per symbol. Hedge when |net| > threshold.
 
@@ -2576,7 +2711,7 @@ In mean-reverting regime (OFI low + drift flat): band stays wide → wait for pa
 
 ---
 
-### Sees vs Misses
+#### Sees vs Misses
 
 | Method | What it sees | What it misses |
 |---|---|---|
@@ -2587,7 +2722,7 @@ In mean-reverting regime (OFI low + drift flat): band stays wide → wait for pa
 
 ---
 
-### Professional Standard
+#### Professional Standard
 
 | Component | What they do |
 |---|---|
@@ -2601,7 +2736,7 @@ In mean-reverting regime (OFI low + drift flat): band stays wide → wait for pa
 
 ---
 
-### Summary
+#### Summary
 
 | | |
 |---|---|
@@ -2615,13 +2750,11 @@ In mean-reverting regime (OFI low + drift flat): band stays wide → wait for pa
 
 ---
 
----
-
-## Layer 6 — Funding Rate / Basis in Perpetuals
+### Layer 6 — Funding Rate / Basis in Perpetuals
 
 ---
 
-### Why the Naive Approach Fails
+#### Why the Naive Approach Fails
 
 A beginner market maker quotes two-sided on a SUI perpetual, earns the spread, and tracks daily gpnl. After a week they notice something strange: spread capture is consistently positive, but total gpnl is flat or negative. The spread model looks right. The fills look right. The number doesn't add up.
 
@@ -2644,7 +2777,7 @@ You can be a perfectly functioning market maker and still lose money to funding 
 
 ---
 
-### How the Funding Rate Is Computed
+#### How the Funding Rate Is Computed
 
 The exchange derives the rate from the basis — the gap between the perpetual price and the spot index:
 
@@ -2670,7 +2803,7 @@ At 0.58%, a 100-lot long position pays $2.03 every 8 hours. Holding for a full d
 
 ---
 
-### Funding as a Regime Signal
+#### Funding as a Regime Signal
 
 The funding rate is not just a cost — it tells you the market's structure.
 
@@ -2701,7 +2834,7 @@ Small per fill, but stacks directly with the adverse selection floor from Layer 
 
 ---
 
-### Funding Timing — the 5-Minute Window
+#### Funding Timing — the 5-Minute Window
 
 Funding payments happen at specific UTC moments: 00:00, 08:00, 16:00. The inventory you hold at that exact second determines your payment.
 
@@ -2716,7 +2849,7 @@ This is directionally the same as the session-urgency in Avellaneda-Stoikov (Lay
 
 ---
 
-### Basis Risk Across Venues
+#### Basis Risk Across Venues
 
 From Layer 5.5: when you hedge by going short on a different venue, you hold long on venue A and short on venue B. This looks delta-neutral. But funding rates are NOT identical across venues.
 
@@ -2740,7 +2873,7 @@ The hedge venue selection should incorporate `funding_rate_diff` in its cost com
 
 ---
 
-### Sees vs Misses
+#### Sees vs Misses
 
 | Method | What it sees | What it misses |
 |---|---|---|
@@ -2752,7 +2885,7 @@ The hedge venue selection should incorporate `funding_rate_diff` in its cost com
 
 ---
 
-### Professional Standard
+#### Professional Standard
 
 | Component | What they do |
 |---|---|
@@ -2765,7 +2898,7 @@ The hedge venue selection should incorporate `funding_rate_diff` in its cost com
 
 ---
 
-### Summary
+#### Summary
 
 | | |
 |---|---|
@@ -2780,13 +2913,139 @@ The hedge venue selection should incorporate `funding_rate_diff` in its cost com
 
 ---
 
----
-
-## Layer 8 — Asset-Wise Profitability
+### Layer 7 — Cancel/Replace Churn Ratio
 
 ---
 
-### Why the Naive Approach Fails
+#### Why the Naive Approach Fails
+
+**Analogy**: you work a market stall and you reprice your sign every 30 seconds whenever the stall next door changes theirs. Each time you change the sign, the queue resets — customers walk away and rejoin the back. By end of day you changed the sign 200 times and served 4 customers. You were always correctly priced. You never made any money.
+
+A beginner MM reprices on every mid-price tick. Quotes are always near fair value. But:
+- Every reprice destroys queue position — new place goes to the back
+- Every reprice = 2 order operations (cancel + place) → OTR spikes → exchange may throttle
+- During the cancel's ~22ms round-trip, the old quote is live and can be adversely filled
+- Result: 500 operations/minute, 3 fills. All the cost of market making, none of the queue benefit.
+
+---
+
+#### The Core Tension
+
+**Cost of repricing** (cancel + replace):
+- Queue rank resets to 0
+- +2 to OTR counter
+- ~22ms cancel RTT window where old stale quote remains fillable
+- If reprice delta < 1 tick: queue destruction with zero economic gain
+
+**Cost of NOT repricing** (holding a stale quote):
+- Quote drifts from fair value
+- Informed traders pick off a quote that's 3 ticks cheap
+
+The question: at what fair-value move distance does stale cost exceed reprice cost? That threshold is the decision boundary — and it must adapt to the current volatility regime.
+
+---
+
+#### How It Works
+
+**Layer 1 — Reprice threshold**: only reprice when fair value has moved far enough:
+
+```
+reprice if |new_fair_value − current_quote_price| > δ_reprice
+```
+
+Too small → constant repricing, queue destruction, OTR spike.
+Too large → stale quotes → adverse fills.
+
+**Never reprice by less than 1 tick.** A sub-tick reprice sends a new quote to the same price level, resets queue rank, and gains nothing.
+
+---
+
+**Layer 2 — The adaptive threshold**: the threshold should track the current volatility regime:
+
+```
+δ_reprice = max(1_tick, k_vol × σ_current × √(cancel_RTT_ms / 1000))
+```
+
+**Why σ × √RTT?** This is the expected mid-price move during the cancel window — the same quantity as the stale quote cost. You reprice only when the quote is already as stale as a full cancel-window of volatility would produce.
+
+- High vol (fast market): σ large → δ_reprice falls → reprice more aggressively. Quotes go bad fast.
+- Low vol (quiet market): σ small → δ_reprice rises → hold queue position longer.
+- High RTT: cancel is slow → stale window is large → tolerate more staleness before repricing pays off.
+
+**Also**: `min_quote_lifetime_ms` — the temporal floor. Even if the spatial threshold fires, the quote cannot be canceled until it has lived long enough. Prevents burst repricing (a fast price spike triggers 20 cancels in 50ms). In KCMME: 300ms default, per-asset configurable, but static within a session (identified gap: should be σ-adaptive too).
+
+---
+
+**Layer 3 — Schmitt-trigger hysteresis**: a threshold without hysteresis bounces. If |Δd*| = 2.1 ticks and threshold = 2.0, the reprice fires. After the reprice, |Δd*| = 0. Price moves 0.1 tick. Now |Δd*| = 0.1 — no reprice. Moves another 0.1 tick — |Δd*| = 0.2. If this oscillates, the engine enters a cancel/replace loop that never settles.
+
+**Schmitt-trigger** breaks this:
+```
+enter REPLACE-eligible: |Δd*| ≥ 1.0 × θ
+exit  REPLACE-eligible: |Δd*| ≤ 0.6 × θ
+```
+Once you trigger, you stay in reprice mode until the quote is back within 60% of the threshold. Prevents oscillation at the boundary.
+
+---
+
+**Layer 4 — Churn budget and feedback loop**: OTR is a budget. If the exchange allows 200 operations/minute before throttling, and you fill 5 times/minute, your budget is 40 operations/fill. Professional MMs monitor rolling OTR and use it as a feedback signal:
+
+```
+if rolling_5min_churn_ratio > budget_threshold:
+    increase δ_reprice    // widen the dead-band — repress less aggressively
+else if churn_ratio < 0.7 × budget_threshold:
+    decrease δ_reprice    // budget headroom — can afford to track price more closely
+```
+
+This makes the system self-correcting. The engine modulates its own reprice aggressiveness based on observed outcome, not just on a calibrated parameter.
+
+---
+
+#### Sees vs Misses
+
+| Method | What it sees | What it misses |
+|---|---|---|
+| Reprice on every tick | Always near fair value | Queue destruction, OTR spike, exchange throttle |
+| Fixed threshold (e.g. 2 ticks) | Controlled churn in normal conditions | Too aggressive in high-vol, too conservative in low-vol |
+| σ-adaptive threshold | Right balance for current regime | No feedback — doesn't respond to actual observed churn rate |
+| Schmitt-trigger + adaptive | Prevents oscillation at boundary | No cross-asset OTR budget coordination |
+| Churn budget feedback + all above | Self-correcting, exchange-aware | — professional standard |
+
+---
+
+#### Professional Standard
+
+| Component | What they do |
+|---|---|
+| Reprice threshold | `max(1_tick, k_vol × σ × √RTT)` — σ-adaptive per asset |
+| Schmitt-trigger | Hysteresis at 1.0×θ enter / 0.6×θ exit — prevents oscillation |
+| Minimum quote lifetime | Hard temporal floor, ideally also σ-adaptive |
+| Sub-tick guard | Reprice vetoed if new price == current price after tick rounding |
+| OTR monitoring | Rolling 5min churn ratio tracked per asset per venue in real time |
+| Churn budget feedback | High OTR → widen dead-band autonomously; recover when OTR falls |
+| Queue-protect gate | Skip cancel if current queue value > back-of-queue replace value |
+
+---
+
+#### Summary
+
+| | |
+|---|---|
+| **What it is** | Ratio of cancel/place operations to fills — measures quoting activity vs liquidity produced |
+| **The tension** | Reprice too often: queue destruction + OTR throttle. Too rarely: stale fills |
+| **Sub-tick guard** | Never reprice to the same price level — queue destruction with zero gain |
+| **Adaptive threshold** | `max(1_tick, k_vol × σ × √RTT)` — widens in fast markets, tightens in slow |
+| **Schmitt-trigger** | Hysteresis prevents oscillation at the threshold boundary |
+| **Churn budget** | OTR is a budget; feedback loop keeps churn near the limit, not blindly below |
+| **`min_quote_lifetime_ms`** | Temporal hard floor — no cancel before minimum age, regardless of price move |
+| **Professional standard** | σ-adaptive threshold + Schmitt-trigger + OTR feedback + queue-value gate |
+
+---
+
+### Layer 8 — Asset-Wise Profitability
+
+---
+
+#### Why the Naive Approach Fails
 
 You run 10 assets. Total session gpnl = +$5. You note it's a profitable day.
 
@@ -2805,7 +3064,7 @@ Total session gpnl is the worst possible diagnostic. It tells you whether the da
 
 ---
 
-### The Four Dimensions of Per-Asset Health
+#### The Four Dimensions of Per-Asset Health
 
 Every asset needs to be measured on four axes simultaneously.
 
@@ -2862,7 +3121,7 @@ LINK earned the same return at one-fifth the capital. In a world with a fixed to
 
 ---
 
-### The Capital Allocation Decision
+#### The Capital Allocation Decision
 
 ```
 maximize: Σ_asset (capital_allocation_i × capital_efficiency_i)
@@ -2883,7 +3142,7 @@ Run more of what works. Run less of what doesn't. This is not complex in princip
 
 ---
 
-### How Prior Layers Compound Per-Asset Differently
+#### How Prior Layers Compound Per-Asset Differently
 
 Each gap from Layers 0–7 damages different assets disproportionately:
 
@@ -2900,7 +3159,7 @@ The scorecard tells you WHERE the losses are. The gap register tells you WHY. Us
 
 ---
 
-### Sees vs Misses
+#### Sees vs Misses
 
 | Method | What it sees | What it misses |
 |---|---|---|
@@ -2912,7 +3171,7 @@ The scorecard tells you WHERE the losses are. The gap register tells you WHY. Us
 
 ---
 
-### Professional Standard
+#### Professional Standard
 
 | Component | What they do |
 |---|---|
@@ -2925,7 +3184,7 @@ The scorecard tells you WHERE the losses are. The gap register tells you WHY. Us
 
 ---
 
-### Summary
+#### Summary
 
 | | |
 |---|---|
@@ -2939,143 +3198,11 @@ The scorecard tells you WHERE the losses are. The gap register tells you WHY. Us
 
 ---
 
----
-
-## Layer 7 — Cancel/Replace Churn Ratio
+### Layer 9 — Per-Asset Calibration
 
 ---
 
-### Why the Naive Approach Fails
-
-**Analogy**: you work a market stall and you reprice your sign every 30 seconds whenever the stall next door changes theirs. Each time you change the sign, the queue resets — customers walk away and rejoin the back. By end of day you changed the sign 200 times and served 4 customers. You were always correctly priced. You never made any money.
-
-A beginner MM reprices on every mid-price tick. Quotes are always near fair value. But:
-- Every reprice destroys queue position — new place goes to the back
-- Every reprice = 2 order operations (cancel + place) → OTR spikes → exchange may throttle
-- During the cancel's ~22ms round-trip, the old quote is live and can be adversely filled
-- Result: 500 operations/minute, 3 fills. All the cost of market making, none of the queue benefit.
-
----
-
-### The Core Tension
-
-**Cost of repricing** (cancel + replace):
-- Queue rank resets to 0
-- +2 to OTR counter
-- ~22ms cancel RTT window where old stale quote remains fillable
-- If reprice delta < 1 tick: queue destruction with zero economic gain
-
-**Cost of NOT repricing** (holding a stale quote):
-- Quote drifts from fair value
-- Informed traders pick off a quote that's 3 ticks cheap
-
-The question: at what fair-value move distance does stale cost exceed reprice cost? That threshold is the decision boundary — and it must adapt to the current volatility regime.
-
----
-
-### How It Works
-
-**Layer 1 — Reprice threshold**: only reprice when fair value has moved far enough:
-
-```
-reprice if |new_fair_value − current_quote_price| > δ_reprice
-```
-
-Too small → constant repricing, queue destruction, OTR spike.
-Too large → stale quotes → adverse fills.
-
-**Never reprice by less than 1 tick.** A sub-tick reprice sends a new quote to the same price level, resets queue rank, and gains nothing.
-
----
-
-**Layer 2 — The adaptive threshold**: the threshold should track the current volatility regime:
-
-```
-δ_reprice = max(1_tick, k_vol × σ_current × √(cancel_RTT_ms / 1000))
-```
-
-**Why σ × √RTT?** This is the expected mid-price move during the cancel window — the same quantity as the stale quote cost. You reprice only when the quote is already as stale as a full cancel-window of volatility would produce.
-
-- High vol (fast market): σ large → δ_reprice falls → reprice more aggressively. Quotes go bad fast.
-- Low vol (quiet market): σ small → δ_reprice rises → hold queue position longer.
-- High RTT: cancel is slow → stale window is large → tolerate more staleness before repricing pays off.
-
-**Also**: `min_quote_lifetime_ms` — the temporal floor. Even if the spatial threshold fires, the quote cannot be canceled until it has lived long enough. Prevents burst repricing (a fast price spike triggers 20 cancels in 50ms). In KCMME: 300ms default, per-asset configurable, but static within a session (identified gap: should be σ-adaptive too).
-
----
-
-**Layer 3 — Schmitt-trigger hysteresis**: a threshold without hysteresis bounces. If |Δd*| = 2.1 ticks and threshold = 2.0, the reprice fires. After the reprice, |Δd*| = 0. Price moves 0.1 tick. Now |Δd*| = 0.1 — no reprice. Moves another 0.1 tick — |Δd*| = 0.2. If this oscillates, the engine enters a cancel/replace loop that never settles.
-
-**Schmitt-trigger** breaks this:
-```
-enter REPLACE-eligible: |Δd*| ≥ 1.0 × θ
-exit  REPLACE-eligible: |Δd*| ≤ 0.6 × θ
-```
-Once you trigger, you stay in reprice mode until the quote is back within 60% of the threshold. Prevents oscillation at the boundary.
-
----
-
-**Layer 4 — Churn budget and feedback loop**: OTR is a budget. If the exchange allows 200 operations/minute before throttling, and you fill 5 times/minute, your budget is 40 operations/fill. Professional MMs monitor rolling OTR and use it as a feedback signal:
-
-```
-if rolling_5min_churn_ratio > budget_threshold:
-    increase δ_reprice    // widen the dead-band — repress less aggressively
-else if churn_ratio < 0.7 × budget_threshold:
-    decrease δ_reprice    // budget headroom — can afford to track price more closely
-```
-
-This makes the system self-correcting. The engine modulates its own reprice aggressiveness based on observed outcome, not just on a calibrated parameter.
-
----
-
-### Sees vs Misses
-
-| Method | What it sees | What it misses |
-|---|---|---|
-| Reprice on every tick | Always near fair value | Queue destruction, OTR spike, exchange throttle |
-| Fixed threshold (e.g. 2 ticks) | Controlled churn in normal conditions | Too aggressive in high-vol, too conservative in low-vol |
-| σ-adaptive threshold | Right balance for current regime | No feedback — doesn't respond to actual observed churn rate |
-| Schmitt-trigger + adaptive | Prevents oscillation at boundary | No cross-asset OTR budget coordination |
-| Churn budget feedback + all above | Self-correcting, exchange-aware | — professional standard |
-
----
-
-### Professional Standard
-
-| Component | What they do |
-|---|---|
-| Reprice threshold | `max(1_tick, k_vol × σ × √RTT)` — σ-adaptive per asset |
-| Schmitt-trigger | Hysteresis at 1.0×θ enter / 0.6×θ exit — prevents oscillation |
-| Minimum quote lifetime | Hard temporal floor, ideally also σ-adaptive |
-| Sub-tick guard | Reprice vetoed if new price == current price after tick rounding |
-| OTR monitoring | Rolling 5min churn ratio tracked per asset per venue in real time |
-| Churn budget feedback | High OTR → widen dead-band autonomously; recover when OTR falls |
-| Queue-protect gate | Skip cancel if current queue value > back-of-queue replace value |
-
----
-
-### Summary
-
-| | |
-|---|---|
-| **What it is** | Ratio of cancel/place operations to fills — measures quoting activity vs liquidity produced |
-| **The tension** | Reprice too often: queue destruction + OTR throttle. Too rarely: stale fills |
-| **Sub-tick guard** | Never reprice to the same price level — queue destruction with zero gain |
-| **Adaptive threshold** | `max(1_tick, k_vol × σ × √RTT)` — widens in fast markets, tightens in slow |
-| **Schmitt-trigger** | Hysteresis prevents oscillation at the threshold boundary |
-| **Churn budget** | OTR is a budget; feedback loop keeps churn near the limit, not blindly below |
-| **`min_quote_lifetime_ms`** | Temporal hard floor — no cancel before minimum age, regardless of price move |
-| **Professional standard** | σ-adaptive threshold + Schmitt-trigger + OTR feedback + queue-value gate |
-
----
-
----
-
-## Layer 9 — Per-Asset Calibration
-
----
-
-### Why the Naive Approach Fails
+#### Why the Naive Approach Fails
 
 You spend two weeks carefully tuning SUI parameters. Adverse fill rate drops from 38% to 27%. GPNL/fill turns positive. You copy the same parameter set to AAVE, BNB, and LINK and deploy all four.
 
@@ -3087,7 +3214,7 @@ Each asset is a different environment. The engine must adapt to the environment 
 
 ---
 
-### What Must Be Calibrated Per Asset
+#### What Must Be Calibrated Per Asset
 
 Not all parameters matter equally. There is a tier structure.
 
@@ -3109,7 +3236,7 @@ Not all parameters matter equally. There is a tier structure.
 
 ---
 
-### The Calibration Sequence
+#### The Calibration Sequence
 
 Calibrate in order. Each layer depends on the previous one being stable. Never touch layer N+1 while layer N is still moving.
 
@@ -3130,7 +3257,7 @@ If the spread floor is wrong, the toxicity data you collect is polluted — you'
 
 ---
 
-### The Cold-Start Problem
+#### The Cold-Start Problem
 
 You need 200–300 fills with post-fill markout to compute a statistically meaningful adverse fill rate and A3 deflated Sharpe. But to get 200 fills you need to be live. But to be live you need parameters.
 
@@ -3143,7 +3270,7 @@ Cold-start live:      base_spread = 5 ticks  (+20% safety margin)
 
 ---
 
-### Walk-Forward Validation Protocol
+#### Walk-Forward Validation Protocol
 
 The antidote to overfitting. Parameters are never validated on the same data they were tuned on.
 
@@ -3160,7 +3287,7 @@ If FAIL: the calibration captured the noise of sessions 1–7, not the structure
 
 ---
 
-### Overfitting Detection Signals
+#### Overfitting Detection Signals
 
 | Signal | What it reveals |
 |---|---|
@@ -3171,7 +3298,7 @@ If FAIL: the calibration captured the noise of sessions 1–7, not the structure
 
 ---
 
-### Regime-Conditional Calibration
+#### Regime-Conditional Calibration
 
 Calibrating on mixed-regime data produces params that are suboptimal for both regimes — an average of two different distributions.
 
@@ -3185,7 +3312,7 @@ The live regime classifier (Layer 10) switches between the two sets. When regime
 
 ---
 
-### Can We Make This Fully Automated? (Honest Answer)
+#### Can We Make This Fully Automated? (Honest Answer)
 
 Some params ARE already auto-adaptive. The FeedbackController updates `k_tox_live` on every fill — online learning is already running. The remaining pain comes from params that update too slowly for fill-by-fill adaptation:
 
@@ -3206,7 +3333,7 @@ The right target: small set of cold-start priors (conservative, sim-derived) + e
 
 ---
 
-### Sees vs Misses
+#### Sees vs Misses
 
 | Approach | What it sees | What it misses |
 |---|---|---|
@@ -3217,7 +3344,7 @@ The right target: small set of cold-start priors (conservative, sim-derived) + e
 
 ---
 
-### Professional Standard
+#### Professional Standard
 
 | Component | What they do |
 |---|---|
@@ -3231,7 +3358,7 @@ The right target: small set of cold-start priors (conservative, sim-derived) + e
 
 ---
 
-### Summary
+#### Summary
 
 | | |
 |---|---|
@@ -3246,13 +3373,11 @@ The right target: small set of cold-start priors (conservative, sim-derived) + e
 
 ---
 
----
-
-## Layer 10 — Market Regime Classification
+### Layer 10 — Market Regime Classification
 
 ---
 
-### Why the Naive Approach Fails
+#### Why the Naive Approach Fails
 
 You build a market making engine and tune it carefully. It works well for two weeks. Then it starts bleeding. Parameters unchanged. Spread unchanged. What changed was the market.
 
@@ -3262,7 +3387,7 @@ The engine was tuned in a mean-reverting regime — prices oscillate around fair
 
 ---
 
-### The Three Regimes a Market Maker Cares About
+#### The Three Regimes a Market Maker Cares About
 
 **Regime 1 — Mean-Reverting / Choppy**
 
@@ -3290,7 +3415,7 @@ Fair value gaps discontinuously. Any live quote is immediately stale by multiple
 
 ---
 
-### The Four Regime Signals
+#### The Four Regime Signals
 
 **σ_ratio** = σ_short / σ_long (30s realized vol / 10min realized vol)
 - ratio > 1.5 → vol spike or early trend
@@ -3311,7 +3436,7 @@ Fair value gaps discontinuously. Any live quote is immediately stale by multiple
 
 ---
 
-### What Must Change Per Regime
+#### What Must Change Per Regime
 
 | Parameter | Choppy | Trending | Spike |
 |---|---|---|---|
@@ -3322,7 +3447,7 @@ Fair value gaps discontinuously. Any live quote is immediately stale by multiple
 
 ---
 
-### The Probabilistic Classifier (Professional Standard)
+#### The Probabilistic Classifier (Professional Standard)
 
 **Naive way** — hard threshold switch:
 ```
@@ -3343,7 +3468,7 @@ No hard switch, no oscillation. Logistic regression or HMM trained on labelled h
 
 ---
 
-### Sees vs Misses
+#### Sees vs Misses
 
 | Approach | What it sees | What it misses |
 |---|---|---|
@@ -3354,7 +3479,7 @@ No hard switch, no oscillation. Logistic regression or HMM trained on labelled h
 
 ---
 
-### Professional Standard
+#### Professional Standard
 
 | Component | What they do |
 |---|---|
@@ -3367,7 +3492,7 @@ No hard switch, no oscillation. Logistic regression or HMM trained on labelled h
 
 ---
 
-### Summary
+#### Summary
 
 | | |
 |---|---|
@@ -3380,9 +3505,9 @@ No hard switch, no oscillation. Logistic regression or HMM trained on labelled h
 
 ---
 
-## Layer 11 — Post-Fill Monetization
+### Layer 11 — Post-Fill Monetization
 
-### Naive Failure
+#### Naive Failure
 
 You post a bid at 99.90. It fills. Now what?
 
@@ -3401,7 +3526,7 @@ These two events require completely different management. Getting event 1 right 
 
 ---
 
-### The Four Exit Paths
+#### The Four Exit Paths
 
 After every fill, you have exactly four ways to exit the inventory:
 
@@ -3432,7 +3557,7 @@ After every fill, you have exactly four ways to exit the inventory:
 
 ---
 
-### The IOC Exit — Why It Always Loses Money
+#### The IOC Exit — Why It Always Loses Money
 
 People assume you can "exit profitably" with an aggressive IOC. You cannot. Here is why:
 
@@ -3467,7 +3592,7 @@ Where `carry_rate = inventory_notional × σ_daily / 86400` per second.
 
 ---
 
-### The Maker-First Timer
+#### The Maker-First Timer
 
 Before firing an IOC, institutions first try a maker limit order on the exit side. The timer for how long to wait is NOT arbitrary — it is derived from the observed fill rate on that side.
 
@@ -3501,7 +3626,7 @@ Research anchor: Cartea-Jaimungal 2015 — optimal switching time from limit to 
 
 ---
 
-### The Full Per-Fill Exit Pipeline
+#### The Full Per-Fill Exit Pipeline
 
 Each fill triggers a structured pipeline:
 
@@ -3538,7 +3663,7 @@ Phase 5 — Post-exit markout feedback (calibrate threshold)
 
 ---
 
-### Cross-Venue Hedge Lifecycle
+#### Cross-Venue Hedge Lifecycle
 
 When you hedge on another venue:
 
@@ -3569,7 +3694,7 @@ If P(maker fill on BitMEX within t*) > 29% for this asset in this regime → cro
 
 ---
 
-### Sees vs Misses
+#### Sees vs Misses
 
 | Approach | What it sees | What it misses |
 |---|---|---|
@@ -3581,7 +3706,7 @@ If P(maker fill on BitMEX within t*) > 29% for this asset in this regime → cro
 
 ---
 
-### Professional Standard
+#### Professional Standard
 
 | Component | What they do |
 |---|---|
@@ -3596,7 +3721,7 @@ If P(maker fill on BitMEX within t*) > 29% for this asset in this regime → cro
 
 ---
 
-### Summary
+#### Summary
 
 | | |
 |---|---|
@@ -3610,13 +3735,13 @@ If P(maker fill on BitMEX within t*) > 29% for this asset in this regime → cro
 
 ---
 
-### Extension: Same-Venue vs Cross-Venue Exit — Two Modes
+#### Extension: Same-Venue vs Cross-Venue Exit — Two Modes
 
 Every taker IOC exit has two route choices. Which one you take determines your fee economics. These are not the same thing and neither is always better.
 
 ---
 
-#### Mode A — Same-Venue Exit Chain
+##### Mode A — Same-Venue Exit Chain
 
 After a bid fill on Binance USDT-M:
 
@@ -3644,7 +3769,7 @@ Mode A is the short path: two positions, one venue, one symbol. The fallback fee
 
 ---
 
-#### Mode B — Cross-Venue Hedge Chain
+##### Mode B — Cross-Venue Hedge Chain
 
 After a bid fill on Binance USDT-M:
 
@@ -3680,7 +3805,7 @@ Mode B is the long path: three or four position transitions. The all-maker path 
 
 ---
 
-#### Break-Even: When Does Mode B Beat Mode A?
+##### Break-Even: When Does Mode B Beat Mode A?
 
 Let P = probability of maker fill on the hedge venue within t*.
 
@@ -3711,7 +3836,7 @@ For most assets, Mode A wins. Mode B via BitMEX is worth attempting on liquid pe
 
 ---
 
-#### A/B Measurement Framework
+##### A/B Measurement Framework
 
 Theory gives the break-even P; live data gives the actual P for each asset. The right approach: run both modes alternately, measure, select the winner per asset.
 
@@ -3753,7 +3878,7 @@ Re-evaluate every 1000 fills — regime changes invalidate prior measurements.
 
 ---
 
-#### Unified State Machine (All 7 Mechanisms Integrated)
+##### Unified State Machine (All 7 Mechanisms Integrated)
 
 Complete per-fill flow incorporating internalisation, skew, maker-first, carry clock, and regime logic:
 
@@ -3795,7 +3920,7 @@ FILL_ARRIVES
 
 ---
 
-#### What Needs to Be Built (Implementation Stack)
+##### What Needs to Be Built (Implementation Stack)
 
 In priority order — each line is a prerequisite for the line below it:
 
@@ -3812,9 +3937,9 @@ The λ_exit_side tracker (item 1) is the foundation everything else builds on. W
 
 ---
 
-## Layer 12 — GPNL Attribution Decomposition
+### Layer 12 — GPNL Attribution Decomposition
 
-### Naive Failure
+#### Naive Failure
 
 The engine is gpnl-negative. What do you do?
 
@@ -3826,7 +3951,7 @@ Attribution decomposition breaks the total into independently measurable compone
 
 ---
 
-### The Decomposition Formula
+#### The Decomposition Formula
 
 Every maker fill contributes:
 
@@ -3854,7 +3979,7 @@ The residual is not rounding error — it is a falsification signal. A large non
 
 ---
 
-### Component by Component
+#### Component by Component
 
 **1. Spread Captured** (entry edge — always positive if quoting correctly)
 
@@ -3933,7 +4058,7 @@ Diagnostic: `cost_fee_rebate_window_usd`. This component should be the smallest 
 
 ---
 
-### Fill-Type Classification
+#### Fill-Type Classification
 
 After computing per-fill contribution, classify every fill into three types:
 
@@ -3960,7 +4085,7 @@ Type C fills are the primary target. Track WHAT CONDITION was present at each Ty
 
 ---
 
-### The Attribution Waterfall
+#### The Attribution Waterfall
 
 The professional way to present attribution is as a descending bar chart from left to right:
 
@@ -3981,7 +4106,7 @@ This waterfall tells you exactly where to look. In this example: adverse_selecti
 
 ---
 
-### The Residual as a Bug Detector
+#### The Residual as a Bug Detector
 
 ```
 residual = realized_GPNL − Σ(all 7 components independently measured)
@@ -3995,7 +4120,7 @@ The residual cannot be tuned away by adjusting the engine. It can only be zeroed
 
 ---
 
-### Sees vs Misses
+#### Sees vs Misses
 
 | Approach | What it sees | What it misses |
 |---|---|---|
@@ -4007,7 +4132,7 @@ The residual cannot be tuned away by adjusting the engine. It can only be zeroed
 
 ---
 
-### Professional Standard
+#### Professional Standard
 
 | Component | What they do |
 |---|---|
@@ -4020,7 +4145,7 @@ The residual cannot be tuned away by adjusting the engine. It can only be zeroed
 
 ---
 
-### Summary
+#### Summary
 
 | | |
 |---|---|
@@ -4034,9 +4159,9 @@ The residual cannot be tuned away by adjusting the engine. It can only be zeroed
 
 ---
 
-## Layer 13 — Validation Discipline
+### Layer 13 — Validation Discipline
 
-### Naive Failure
+#### Naive Failure
 
 You make a change. You run the sim. The result is better. You ship it.
 
@@ -4050,7 +4175,7 @@ Validation discipline is the framework that separates genuine improvements from 
 
 ---
 
-### The Validation Ladder
+#### The Validation Ladder
 
 Three rungs. Each one is a necessary condition for the next. You cannot skip a rung.
 
@@ -4076,7 +4201,7 @@ Rung 3 — Mainnet (ground truth)
 
 ---
 
-### What Makes a Sim Result Trustworthy
+#### What Makes a Sim Result Trustworthy
 
 **Condition 1 — ±25% Fidelity Gate (prerequisite)**
 
@@ -4111,7 +4236,7 @@ The sim result of the change is meaningless without the sim result of the UNCHAN
 
 ---
 
-### Statistical Validity — Sample Size and Multiple Testing
+#### Statistical Validity — Sample Size and Multiple Testing
 
 **The MinTRL problem**
 
@@ -4141,7 +4266,7 @@ Practical rule: if you changed one thing and validated it on a fresh scenario, D
 
 ---
 
-### The Validate-Freeze Approach
+#### The Validate-Freeze Approach
 
 Change one thing. Validate it. Freeze it. Then change the next thing.
 
@@ -4178,7 +4303,7 @@ Only move down the list when the current layer is validated and frozen.
 
 ---
 
-### What Invalidates a Validation Result
+#### What Invalidates a Validation Result
 
 These are the failure classes that have cost real money in prior cycles:
 
@@ -4199,7 +4324,7 @@ Changing a bug fix AND a parameter improvement in the same iteration makes it im
 
 ---
 
-### Sees vs Misses
+#### Sees vs Misses
 
 | Approach | What it sees | What it misses |
 |---|---|---|
@@ -4211,7 +4336,7 @@ Changing a bug fix AND a parameter improvement in the same iteration makes it im
 
 ---
 
-### Professional Standard
+#### Professional Standard
 
 | Component | What they do |
 |---|---|
@@ -4228,7 +4353,7 @@ Changing a bug fix AND a parameter improvement in the same iteration makes it im
 
 ---
 
-### Summary
+#### Summary
 
 | | |
 |---|---|
@@ -4240,3 +4365,4 @@ Changing a bug fix AND a parameter improvement in the same iteration makes it im
 | **Key invalidations** | Bug-induced prior wins / same-scenario seed / single-session overfit / sim diverged / simultaneous changes |
 | **Professional standard** | Walk-forward + DSR + attribution delta (did the target component actually improve?) |
 
+---
