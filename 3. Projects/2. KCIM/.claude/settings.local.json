@@ -1,7 +1,18 @@
 {
   "permissions": {
     "allow": [
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(awk -F',' '{print $3}')",
+      "Bash(awk -F',' 'NR>1{print $3}' \"/Users/shivprasadkounsalye/Desktop/trading/3. Projects/2. KCIM/data/nifty_options_raw/nifty_data/nifty_options/2024/1/nifty_options_01_01_2024.csv\")",
+      "Bash(awk -F',' 'NR>1{print $3}' \"/Users/shivprasadkounsalye/Desktop/trading/3. Projects/2. KCIM/data/nifty_options_raw/nifty_data/nifty_options/2024/1/nifty_options_02_01_2024.csv\")",
+      "Bash(awk -F',' '$2==\"09:20:00\"{print}' \"/Users/shivprasadkounsalye/Desktop/trading/3. Projects/2. KCIM/data/nifty_options_raw/nifty_data/nifty_options/2024/1/nifty_options_02_01_2024.csv\")",
+      "Bash(awk -F: '$1 >= 2444')",
+      "Bash(/opt/homebrew/bin/python3 -m pip show pandas)",
+      "Bash(conda info:*)",
+      "Bash(/opt/anaconda3/bin/python3:*)",
+      "Read(//usr/local/bin/**)",
+      "Read(//Users/shivprasadkounsalye/**)",
+      "Bash(jupyter kernelspec:*)"
     ]
   }
 }
