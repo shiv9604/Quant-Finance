@@ -107,119 +107,91 @@ For Example - If a person is willing to sell 10 stocks, and in order book 0.01, 
 
 ### Level 0 — Mental Model
 
-*(Pending — restart begins here.)*
+**Status: ✅ Taught 2026-07-23.**
 
-#### Core Architecture of a Market Maker
+#### 1. What It Is
 
-*(Interim — moved from Foundation 2026-07-10; will be rewritten to full end-to-end depth when this level is taught.)*
+A market maker doesn't sell predictions — it sells *immediacy*. Someone wants to trade *right now* without waiting for a natural counterparty to show up; the MM is the counterparty who's always there, and the bid-ask spread is the price of that service. But spread collected is not spread kept: everything that can go wrong between opening a position and closing it eats into that spread. The mental model a market maker needs is not "buy low, sell high" — it's a full accounting of what the spread has to pay for.
 
-A market maker continuously posts a bid and an ask around an internal estimate of fair value. The goal is not to predict direction but to price risk, manage inventory, and optimize expected value per trade. The business model is to earn small spreads repeatedly while controlling losses from adverse selection.
+What breaks if you get this wrong: you treat every fill as a clean toll collection, you can't explain a losing day when the spread you charged looks perfectly reasonable, and you have no framework to tell whether a bad day was "the market moved" or "we got picked off" — two problems with opposite fixes.
 
-**Pillar 1 — Fair Value Estimation -**
-1. Fair value is the internal estimate of what the asset should trade at right now.
-2. It is not the last traded price.
-3. If fair value is wrong, the market maker gets picked off.
-4. Fair value can be derived from:
-   - Mid price.
-   - Cross-exchange prices.
-   - Order book imbalance.
-   - Short-term momentum.
-   - Funding rates (in perpetual markets).
-5. Fair value is the anchor of the entire quoting system.
+---
 
-**Pillar 2 — Spread Setting -**
-1. Once fair value (F) is estimated:
-   - Bid = F − half_spread.
-   - Ask = F + half_spread.
-2. Spread is compensation for risk.
-3. Spread accounts for:
-   - Adverse selection risk.
-   - Volatility.
-   - Inventory risk.
-   - Trading fees.
-4. Higher volatility → higher adverse risk → wider spread.
-5. Spread is dynamic and must adjust to market conditions.
+#### 2. Simple Example
 
-**Pillar 3 — Inventory Management -**
-1. A market maker will not remain flat at all times.
-2. Imbalanced order flow causes inventory buildup.
-3. Inventory introduces directional exposure.
-4. If unmanaged, inventory risk can wipe out spread gains.
-5. Inventory is controlled by:
-   - Skewing quotes.
-   - Adjusting spread asymmetrically.
-   - Reducing quote size.
-   - Hedging when necessary.
-6. Inventory control is essential for long-term survival.
+Quote ETH 3,000.00 bid / 3,000.60 ask. Fill on the bid (buy 1 ETH at 3,000.00), fill on the ask (sell 1 ETH at 3,000.60) — a completed round trip, $0.60 captured. That's the model working correctly: symmetric, instant, isolated.
 
-**Structural Relationship -**
-1. Fair value determines where to quote.
-2. Spread determines how much risk premium to charge.
-3. Inventory determines how aggressively to lean quotes.
-4. All three pillars interact continuously.
-5. Market making is the optimization of these three variables under uncertainty.
+Now the failure case: buy 1 ETH at 3,000.00, but the next fill on the ask doesn't come for 45 seconds — in that time fair value drifts to 2,999.70, and you finally sell at 3,000.10 (your ask, now repriced lower because the market moved). Spread capture on paper looks like $0.10, but you also ate a $0.30 markdown from holding through the drift. Net: −$0.20 on a trade that "should" have earned $0.60. Nothing exotic happened — the position was simply exposed to price risk for the 45 seconds it existed.
 
-**Terminologies used in this section -**
+---
 
-- **Half-Spread -**
-  1. Half-spread = Spread ÷ 2.
-  2. Quotes are typically placed symmetrically around fair value.
-  3. If Fair Value (F) = 100 and Spread = 2:
-     - Bid = 99.
-     - Ask = 101.
-  4. Half-spread simplifies quote construction around fair value.
-  5. It represents risk premium charged on each side.
+#### 3. How It Works (Simple → Sophisticated)
 
-- **Fair Value (F) -**
-  1. Fair value is the internal estimate of what the asset should trade at right now.
-  2. It is not necessarily the last traded price.
-  3. It can be derived from:
-     - Mid price.
-     - Cross-exchange prices.
-     - Order book imbalance.
-     - Short-term momentum.
-     - Funding rates (in perpetual markets).
-  4. Accurate fair value estimation is critical to avoid being picked off.
+##### Basic approach — "spread is profit"
 
-- **Adverse Selection -**
-  1. Occurs when someone trades with your quote.
-  2. Immediately after the trade, price moves against you.
-  3. It implies the counterparty had superior short-term information.
-  4. It is the primary structural risk in market making.
-  5. Spread must compensate for expected adverse selection cost.
+`PnL = spread × number of round trips`. Quote a $0.60 spread, complete 100 round trips a day, PnL = $60/day. Clean, and completely blind to time — it assumes the buy-fill and sell-fill happen at the same instant, at the same fair value, with no gap.
 
-- **Quote Size -**
-  1. Quote size is the quantity posted at bid and ask.
-  2. Larger size increases exposure per fill.
-  3. Smaller size reduces inventory risk.
-  4. Size impacts fill rate and inventory accumulation speed.
+**What this still misses:** real fills don't happen simultaneously. You buy now, and the matching sell might come 4 seconds later or 4 minutes later. The basic model has no term for what happens to price *during that gap*.
 
-- **Skewing Quotes -**
-  1. Skewing means shifting bid and ask asymmetrically.
-  2. It is typically done due to inventory imbalance.
-  3. If long inventory:
-     - Move quotes downward.
-     - Make buying harder.
-     - Encourage selling.
-  4. If short inventory:
-     - Move quotes upward.
-     - Make selling harder.
-     - Encourage buying.
-  5. Skewing helps return inventory toward neutral.
+##### Intermediate approach — spread minus inventory carry
 
-- **Inventory Leaning -**
-  1. Leaning is adjusting quotes in the direction that reduces inventory exposure.
-  2. It introduces directional bias intentionally.
-  3. It is a risk control mechanism.
-  4. It prevents uncontrolled inventory accumulation.
+`PnL = spread capture − inventory carry cost`, where carry cost = (holding time) × (adverse price drift while held). This explains the 45-second ETH example above: $0.10 nominal capture − $0.30 carry = −$0.20. A real improvement — but it treats the adverse move as symmetric random noise, like weather, with no reason to expect it to be biased against you specifically.
 
-- **Symmetric vs Asymmetric Quoting -**
-  1. Symmetric quoting:
-     - Equal distance from fair value on both sides.
-  2. Asymmetric quoting:
-     - Unequal distances due to inventory or risk adjustments.
-  3. Asymmetry reflects active risk management.
-  4. Professional market makers constantly shift between symmetric and asymmetric quoting.
+**What this still misses:** it can't explain why fills themselves aren't a random sample. In real markets, more buy-fills happen right before price *drops* than chance would predict — the counterparties trading against you are, on average, better informed than random noise. That's not carry risk; that's a structurally biased selection of *which* trades you get filled on.
+
+##### Professional approach — the full identity
+
+`PnL = spread capture − adverse selection − inventory carry cost − fees/infrastructure`
+
+Four terms, each owning a distinct failure mode:
+- **Spread capture** — the basic model's entire universe: gross toll per completed round trip.
+- **Adverse selection** — the cost of *who* chooses to trade with you; fills are concentrated among informed counterparties, not randomly distributed (full mechanics: Level 6).
+- **Inventory carry cost** — the cost of *when* your round trip completes; price can move against you purely from holding time, even against a perfectly neutral counterparty (full mechanics: Level 7).
+- **Fees/infrastructure** — the toll on your own toll: exchange fees, plus the infrastructure cost of competing for fills at all.
+
+**Why four separate terms, not one combined "risk" bucket?** They're driven by different things and need different defenses. Adverse selection is a counterparty-information problem — fixed by pricing and skewing against toxic flow. Inventory carry is a time-and-volatility problem — fixed by holding less, for less time, with tighter reservation pricing. Merge them and you can't tell whether a bad day was "the market moved" or "we got picked off" — and the fix for one can worsen the other (holding inventory longer to avoid a badly-timed exit reduces adverse-selection exposure but increases carry exposure — a real trade-off, invisible if the terms are merged).
+
+**Sanity check at the edge case:** set adverse selection = 0 (every counterparty a random tourist), inventory carry = 0 (instant round trips), fees = 0. The formula collapses to `PnL = spread capture` — exactly the basic model. The professional model doesn't discard the basic one; it contains it as the special case where nothing goes wrong. That containment is the check that the formula is built correctly, not just plausible.
+
+---
+
+#### 4. Professional Standard (Jane Street / Citadel Level)
+
+A senior MM trader doesn't ask "did we make money today?" — they ask "how much was spread capture, how much did adverse selection cost, how much did carry cost, what were fees?" — because each answer routes to a different team and a different fix (pricing model, risk limits, or infrastructure).
+
+The other structural difference from retail intuition: **risk warehousing is priced continuously, not discovered at exit.** A retail mental model treats a position as "bought, now waiting to sell," with the P&L verdict arriving only when it's closed. An institutional desk marks every open position to market continuously — inventory carry is a running cost accruing every millisecond a position exists, and it feeds back into the *next* quote (the seed of the Avellaneda-Stoikov reservation price, Level 7). Adverse selection is handled the same way: not measured after the fact from realized markout, but estimated *predictively* per counterparty flow pattern, before the fill even happens, so quotes can skew in advance. The retail model is purely retrospective ("how'd we do?"); the professional model is predictive and defensive at every quote.
+
+---
+
+#### 5. Summary
+
+| | |
+|---|---|
+| **What it is** | The MM business decomposed into four honest terms: `PnL = spread capture − adverse selection − inventory carry − fees`, not "buy low, sell high." |
+| **Why it matters** | Every later level is a microscope on exactly one of these four terms — without this frame, nothing found later has anywhere to file. |
+| **Professional standard** | Institutions track and defend each term separately and continuously (predictive, not retrospective) — never treat PnL as one undifferentiated number. |
+
+---
+
+#### 6. Structural View — The Three Pillars
+
+A complementary lens on the same model: three interacting variables a quoting system optimizes continuously.
+
+- **Fair value** — the internal estimate of what the asset should trade at right now (not the last traded price). Determines *where* to quote. If wrong, the MM gets picked off regardless of how well the other two pillars are tuned. (Full mechanics: Level 4.)
+- **Spread** — the risk premium charged around fair value. Determines *how much* to charge for the four-term risk above. Widens with volatility and adverse-selection risk. (Full mechanics: Level 5.)
+- **Inventory** — the position accumulated from imbalanced fills. Determines *how aggressively* to lean quotes back toward neutral (skew, size reduction, hedging). (Full mechanics: Level 7.)
+
+Fair value determines where to quote, spread determines the premium, inventory determines the lean — and all three interact continuously under uncertainty. This is the architectural skeleton the rest of the roadmap fills in, level by level.
+
+---
+
+#### Sees vs Misses
+
+| Model | What it sees | What it misses |
+|---|---|---|
+| Basic ("spread = profit") | Gross toll per completed round trip | Time exposure, counterparty information, fees — assumes instant, risk-free round trips |
+| Intermediate (spread − carry) | Cost of holding time and price drift | Treats fills as a random sample; can't see that fills are biased toward informed counterparties |
+| Professional (spread − adverse selection − carry − fees) | Full decomposition: gross revenue and three independently tracked, independently defended cost terms | Nothing structural at Level 0 — each term is shallow here and gets its own full mechanism later (adverse selection → L6, inventory → L7, spread/fee economics → L3/L5) |
 
 ---
 
