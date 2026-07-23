@@ -197,7 +197,117 @@ Fair value determines where to quote, spread determines the premium, inventory d
 
 ### Level 1 — Market Structure
 
-*(Pending.)*
+**Status: ✅ Taught 2026-07-24.**
+
+#### 1. What It Is
+
+Market structure is the actual machinery of *how* trading happens at a given venue — the matching algorithm, the order-type menu, the fee schedule, the price/quantity increments, the margin regime, the trading calendar. It's not a strategy choice; it's the physics every strategy has to operate inside, whether it accounts for that or not.
+
+What breaks if you get it wrong: your strategy logic can be perfectly sound and still fail mechanically — an order gets rejected, rounds to a worse price than intended, silently pays a fee you didn't budget for, or behaves completely differently than it did on the venue you tested it on. Market structure bugs don't look like strategy bugs; they look like "the exchange is being weird," and they're invisible until you go looking for them.
+
+---
+
+#### 2. Simple Example
+
+Two fruit stalls in the same town both sell apples, and a naive trader assumes "a market is a market" — buy where cheap, sell where pricier, done.
+
+- **Stall A**: sells only by the full crate (a fixed lot size), closes at 5pm sharp every day, charges a flat $2 entry fee per visit regardless of how much you buy.
+- **Stall B**: sells single apples (fine-grained sizing), open 24 hours, and actually pays *you* $0.05 per apple if you're the one who shows up first and offers to sell (a maker rebate, to attract sellers).
+
+A trader who sees "Stall A apples are $1.00, Stall B apples are $1.10" and thinks "buy 10 loose apples at A, sell at B for a $1 profit" runs straight into two structural walls: Stall A won't sell 10 loose apples — only full crates (lot size mismatch), and if this idea occurs to them at 6pm, Stall A is already closed (session mismatch). The "price gap" they saw was real; the plan built on top of it was structurally impossible before a single trade happened.
+
+---
+
+#### 3. How It Works (Simple → Sophisticated)
+
+##### Basic approach — "a market is a market, only price matters"
+
+The naive model treats every venue as functionally identical: a single number (the price) is all that's needed to compare opportunities or place a strategy.
+
+**What this still misses:** it assumes continuous matching (an order sent now, matched now) and price-time priority (first-come-first-served at a price level) everywhere — neither is universal. Some markets run periodic auctions instead of continuous matching (batch up orders, match once at a scheduled instant). Some derivatives markets use pro-rata matching instead of price-time — at the same price, size determines your share of the fill, not who arrived first, which means "queue position" as a concept doesn't even apply there. A strategy built assuming continuous price-time matching, dropped onto a pro-rata or auction venue, doesn't fail loudly — it just behaves nothing like intended.
+
+##### Intermediate approach — "I'll account for the visible parameters"
+
+This model checks the obvious mechanical facts before trading: tick size (round prices correctly), lot size (round quantities correctly), and the fee schedule (budget for it). A real improvement — it catches the Stall A crate problem.
+
+**What this still misses:** the parameters that aren't a single visible number. Filters compose — a venue can enforce LOT_SIZE, MIN_NOTIONAL, and PRICE_FILTER *simultaneously*, and satisfying one says nothing about the others. Concretely: symbol XYZ requires quantity in multiples of 1 unit (LOT_SIZE ✓), order value ≥ $5 (MIN_NOTIONAL), and price within ±10% of last trade (PRICE_FILTER). An order for 0.001 XYZ at $2.00 = $0.002 notional satisfies LOT_SIZE trivially and PRICE_FILTER easily — but fails MIN_NOTIONAL by 2,500×. A trader who validates only against the filter they remember to check gets silently rejected, over and over, and the failure looks like nothing in particular — not "wrong price," not "wrong size," just rejected. The fix isn't checking harder against one filter; it's checking the *intersection* of all filters that apply, every time.
+
+Beyond filters, the intermediate model also misses regime-level facts: whether margin is cross (all positions share one collateral pool) or isolated (each position's risk is walled off — losing one position can't cascade into liquidating another), and how the venue computes its mark price (an index blended from multiple external venues resists manipulation; a mark price sourced from thin local last-trade doesn't — the same nominal position can be safe on one venue's mark-price formula and liquidatable on another's).
+
+##### Professional approach — market structure as a maintained specification
+
+Institutions treat each venue's structure as a versioned specification sheet, not a set of facts memorized once: matching algorithm, full order-type menu (which of IOC/FOK/Post-Only/GTC it actually supports — not every venue supports every TIF), the complete filter set and how filters compose, the fee tier ladder (volume-based — your effective fee this month depends on last month's volume, not a static number), margin mode, mark-price formula, circuit-breaker/halt behavior, and self-trade-prevention mode.
+
+**Why "maintained" and not "known"?** Because venues change these rules — fee tiers shift with volume, filters get updated, new order types roll out — without necessarily notifying every counterparty in a way that reaches your system automatically. A specification memorized once and hard-coded silently goes stale. Professional systems ingest venue limits continuously (auto-fetched, not hand-typed) and validate live orders against the current spec before sending — the intersection-of-all-filters check from above isn't a one-time audit, it's a standing gate every order passes through.
+
+---
+
+#### 4. Professional Standard (Jane Street / Citadel Level)
+
+At institutional scale, market structure isn't background knowledge a trader keeps in their head — it's encoded as machine-readable configuration, auto-refreshed from the venue's own API, and treated as a first-class input the same way price is. A senior infrastructure engineer's mental model: "the venue's rulebook can change under me at any time, and my system has to notice before it sends an order, not after it gets rejected."
+
+This is also where cross-venue operation gets structurally serious: running the same strategy on two exchanges means maintaining two (or more) separate specification sheets simultaneously, because nothing guarantees they match — different tick sizes, different fee ladders, different margin regimes, different matching algorithms for the *same* nominal instrument. Professional multi-venue systems don't assume parity; they explicitly model each venue's structure independently and only unify at the strategy-decision layer above it, never below.
+
+---
+
+#### 5. Summary
+
+| | |
+|---|---|
+| **What it is** | The matching rules, order-type menu, fee schedule, and quantity/price constraints a venue enforces — the physics a strategy operates inside, not a strategy choice itself. |
+| **Why it matters** | Structural mismatches fail silently and look nothing like strategy bugs — rejected orders, wrong-priced fills, or an unbudgeted fee, all traceable to a spec fact the system never checked. |
+| **Professional standard** | Treat venue structure as continuously-ingested, versioned configuration validated before every order — never a memorized, one-time fact. |
+
+---
+
+#### 6. Re-anchoring Level 0 — Fees, With a Real Number
+
+Level 0's PnL identity had a `fees` term that stayed abstract. Here it earns a number: on a $3,000 notional trade, a 0.05% taker fee costs $1.50; a 0.02% maker fee costs $0.60; a maker *rebate* of 0.01% at a high volume tier *pays you* $0.30. Same trade, same size, three different fee outcomes purely from market-structure facts (which side of maker/taker you land on, which fee tier you've earned) — a $1.80 swing on one trade that has nothing to do with your spread or your fair-value estimate. Run that gap across a few thousand trades a day and market structure alone — not strategy skill — can be the difference between the `fees` term being a rounding error or the dominant term in the PnL identity.
+
+---
+
+#### 7. Order Types in Depth — IOC, FOK, Post-Only/GTX
+
+These three answer three different questions, and are easy to blur together. One shared order book makes the contrast concrete:
+
+| Side | Price | Qty | Owner |
+|---|---|---|---|
+| Ask | 3000.70 | 5 ETH | Trader B |
+| Ask | 3000.60 | 2 ETH | Trader A |
+| *(spread)* | | | |
+| Bid | 3000.00 | 3 ETH | Trader C |
+
+**IOC — "grab what's there right now, forget the rest."** Executes immediately against whatever's available at your price or better; the quantity you couldn't fill instantly is cancelled, never left resting. Analogy: you want 5 apples at up to $1 each — the shop has 2 at that price, you buy the 2 and leave, no standing order for restock.
+
+Example — **BUY, IOC, limit 3000.60, qty 5**: only the 2 ETH @ 3000.60 qualifies (3000.70 exceeds the limit). Fills 2 instantly; the remaining 3 are cancelled immediately, never rest. Partial fill, done in one instant.
+
+**FOK — "all 5, right now, or none at all."** Same instant-or-cancel behavior as IOC, but no partial fills — either the full requested quantity fills immediately, or the whole order is killed with zero fill. Analogy: you need exactly 5 matching dining chairs right now — 2 is useless, so if the shop only has 2, you walk out with nothing.
+
+Example A (fails) — **BUY, FOK, limit 3000.60, qty 5**: only 2 ETH available at or below the limit; can't fill the full 5 instantly → entire order killed, 0 filled. (IOC would have taken the 2. FOK refuses even that.)
+Example B (succeeds) — **BUY, FOK, limit 3000.70, qty 5**: both levels now qualify (2 @ 3000.60 + 5 @ 3000.70 = 7 ≥ 5 needed) → executes 2 @ 3000.60 + 3 @ 3000.70 instantly; Trader B's remaining 2 @ 3000.70 stays in the book untouched.
+
+**Post-Only / GTX — "I only ever want to be the one waiting, never the one grabbing."** A different axis entirely — not about fill quantity, but a maker-only guarantee checked *before acceptance*. If the order would match immediately against the opposite side (i.e., act like a taker), the exchange rejects it outright — doesn't reprice it, doesn't partial-fill it, just refuses it. Analogy: you're setting up a stall to sell apples at $1.20, planning to wait for a buyer — but if someone's already standing there offering $1.30, placing your $1.20 stall would mean instantly selling to them (you'd be the one grabbing an existing offer, not the one waiting). Post-only says: don't even let me set up the stall if that's what would happen.
+
+Example A (accepted) — **SELL, Post-Only, price 3000.50**: best bid is 3000.00, so a sell at 3000.50 matches nothing resting → no immediate trade, order rests normally as the new best ask.
+Example B (rejected) — **SELL, Post-Only, price 2999.50**: best bid (3000.00) is *higher* than this sell price → it would instantly match, taking liquidity → the exchange rejects the entire order at submission. Nothing fills, nothing rests.
+
+IOC and FOK are about *your own aggressive orders* — used when you need to take (an emergency hedge leg, exit dispatch where certainty matters more than fee treatment). Post-Only is about *your resting quotes* — the mechanism that guarantees you stay a maker on every quote posted, which is literally how Level 0's "spread capture" term stays real rather than accidentally becoming a taker and paying the spread you meant to earn.
+
+| | Rests in book? | Partial fill allowed? | What it guarantees |
+|---|---|---|---|
+| **IOC** | Never | Yes | Immediate execution of whatever's available, nothing left dangling |
+| **FOK** | Never | No — all or nothing | Full-size execution or nothing; no partial exposure |
+| **Post-Only / GTX** | Yes (if accepted) | N/A — it's about acceptance, not fill quantity | You are never the taker; crossing orders get rejected, not filled |
+
+---
+
+#### Sees vs Misses
+
+| Model | What it sees | What it misses |
+|---|---|---|
+| Basic ("price is all that matters") | The quoted price on each venue | Matching algorithm differences (continuous vs auction vs pro-rata), meaning "queue position" and "instant fill" don't universally apply |
+| Intermediate (checks visible params) | Tick size, lot size, a single fee number | Filter *composition* (must satisfy the intersection, not one filter), margin mode, mark-price formula, and that fee tiers move with volume |
+| Professional (maintained spec sheet) | Full venue rulebook, auto-ingested and continuously validated, per venue independently in multi-venue setups | Nothing structural — the residual risk is operational (staying current as venues change rules), not conceptual |
 
 ---
 
