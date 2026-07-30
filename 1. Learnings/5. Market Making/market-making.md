@@ -313,7 +313,186 @@ IOC and FOK are about *your own aggressive orders* — used when you need to tak
 
 ### Level 2 — Limit Order Book
 
-*(Pending.)*
+**Status: ✅ Taught 2026-07-24.** Interactive visual companion (same numbers as below):
+https://claude.ai/code/artifact/6923c022-d95a-402a-b1d5-ffd1b1233ee2
+
+#### 1. What It Is
+
+The order book is the live stack of all resting bid and ask orders at a venue for one symbol — a record of *intent to trade*, not of trades. Everything a market maker decides — fair value, spread, sizing — is read off this one structure in real time, and it is read two ways at once: as **shape** (depth, imbalance) and as **flow** (the stream of adds, cancels, and trades changing it). Because nobody trades off raw exchange messages, the book you actually use is a *local replica* — and replicas can silently drift from reality, which makes book integrity an engineering discipline, not an assumption.
+
+What breaks if you get it wrong: every downstream system reads from this instrument, so one corrupted or misread book poisons fair value, toxicity, queue estimates, and execution simultaneously — and the failure mode is never an error message, it's an unexplainable bad fill minutes later.
+
+#### 2. Terminology (with visuals)
+
+All examples use one book: best bid 3000.00, best ask 3000.60.
+
+**Order book** — asks stacked above the spread, bids below; every row is waiting, none of it has traded:
+
+```
+         price      qty
+  ask    3000.90    ████████ 8
+  ask    3000.80    ████     4
+  ask    3000.70    █████    5
+  ask    3000.60    ██       2     ← best ask
+         ────── spread $0.60 — no resting orders ──────
+  bid    3000.00    ███      3     ← best bid
+  bid    2999.90    ██████   6
+  bid    2999.80    ████     4
+```
+
+**Price level** — a level is a *sum*, not a list: three traders each resting 1 ETH at 3000.60 appear as one row, `3000.60 : 3 ETH`. Who it belongs to is invisible at this granularity.
+
+**L1 / L2 / L3 / L4 — the data-tier staircase** (four views of the same book):
+
+```
+  L1 (top only)      L2 (aggregated)       L3 (3000.60 exploded, arrival order)
+     ?      ?        3000.90   8            #8841  1.0   10:00:00.001  ← fills 1st
+     ?      ?        3000.80   4            #8842  1.0   10:00:00.418  ← fills 2nd
+  3000.60   2        3000.70   5            #8907  1.0   10:00:01.250  ← fills last
+  ─────────          3000.60   2
+  3000.00   3        ─────────             L4 (explicit queue position — ~nobody publishes)
+     ?      ?        3000.00   3            @3000.00: [ahead 12 ETH][YOU 2][behind 6]
+     ?      ?        2999.90   6            "you are 4th — 12 ETH fills before you"
+```
+
+L1 = best bid/ask only. L2 = every level, quantity summed per price (what most venues publish). L3 = individual orders with identity and sequence (what makes true queue knowledge possible — many venues don't publish it). L4 = your exact queue position stated directly (essentially never published — must be estimated probabilistically from L2 + fill patterns).
+
+**Depth of Market (DOM)** — the shape of L2 read as "how far does an order push price?":
+
+```
+  thin book:   3000.00 █ 1   2999.90 ██ 2   2999.80 █ 1   2999.70 ██ 2
+               → sell 6 ETH eats four levels → price moves 4 ticks
+  thick book:  3000.00 ████████████ 12   2999.90 ███████████████ 15  ...
+               → same sell 6 ETH absorbed at first level → 0 ticks
+```
+
+**Book imbalance** — lopsidedness is information (full formula treatment as OFI at Level 6):
+
+```
+  bids ◀████████████████████ 40 ETH │ 8 ETH ████▶ asks
+  bid share = 40 / (40+8) = 0.83 → book leans hard toward buyers
+```
+
+**Snapshot vs. incremental (delta) update** — one full picture at connect, then tiny edits applied to your local copy; miss one and the book is silently wrong:
+
+```
+  snapshot (once)   +   delta stream (continuous)
+  full top-N book       u=4880  cancel 0.5 @ 3000.60   applied
+                        u=4881  add    2.0 @ 3000.70   LOST — never seen
+                        u=4882  add    1.0 @ 2999.90   applied
+                        → local book now wrong at 3000.70, no error fired
+```
+
+**Aggregation (publishing boundary)** — the exchange's matching engine tracks every individual order internally (L3); publishing only L2 is a *choice*. The L2/L3 gap is a wall the venue built, not a fact of nature.
+
+**Book depth (N-level sum)** — size questions are answered by cumulative sums, never single levels:
+
+```
+  3000.00   3    Σ 3
+  2999.90   6    Σ 9
+  2999.80   4    Σ 13   → "sell 20 ETH within 3 ticks?" 13 < 20 → NO (7 short)
+```
+
+**Slippage from depth consumption ("walking the book")** — an order bigger than the top level fills level by level; the average price is worse than the price on the screen:
+
+```
+  3000.70   5   ← 3 taken
+  3000.60   2   ← 2 taken
+  market BUY 5 → avg = (2×3000.60 + 3×3000.70)/5 = 3000.66
+  slippage $0.06/ETH vs top-of-book — decided entirely by depth
+```
+
+**Phantom liquidity** — visible depth is intent, and intent can cancel faster than your order travels:
+
+```
+  t0 you look:      3000.60 │ 12 ETH offered — looks like plenty
+  t1 in flight:     your IOC BUY 10 travelling (~10ms); 11 ETH cancels
+  t2 arrives:       3000.60 │ 1 ETH → filled 1, other 9 die unfilled (IOC)
+```
+
+#### 3. Why the Naive Approach Fails
+
+**The naive model:** "The book tells me the price. Best bid 3000.00, best ask 3000.60 — ETH is worth about 3000.30. Done."
+
+**Analogy — the parking lot sign.** A garage displays "47 SPACES FREE." You drive in relaxed... and the spaces are on the roof, half are compact-only, and 30 are gone by the time you reach the ramp because the sign updates every five minutes. The sign was *true when printed* — but it was a summary of a changing situation, not a guarantee about your outcome. The order book is that sign at millisecond speed:
+
+- **The book is intent, not commitment** — the 12 ETH offered can cancel during the milliseconds your order spends travelling (phantom liquidity above: looked at 12, filled 1).
+- **The mid of a lopsided book is not the fair price** — 40 ETH on bids vs 8 on asks: simple mid says 3000.30, but that imbalance is pressure; true value is almost certainly higher. Naive mid-reading misprices exactly when it is most expensive.
+- **A photo misses the movie** — two books can look identical right now while one just had 50 ETH of bids *added* and the other 50 ETH *cancelled*. Same photo, opposite futures.
+
+#### 4. How It Works (Simple → Sophisticated)
+
+##### Basic — read the top, compute the mid
+
+`mid = (best_bid + best_ask) / 2` → (3000.00 + 3000.60)/2 = 3000.30. Genuinely useful — the least-biased instant summary, and all that L1 data offers. **What it misses:** everything behind the top. Thin and thick books can share an identical top-of-book while a 6 ETH sell moves one 4 ticks and the other 0 — same mid, radically different cost of trading.
+
+##### Intermediate — read the whole shape: depth and imbalance
+
+Sum depth within N ticks (Σ column above: 13 ETH within 3 ticks → a 20 ETH exit can't happen at acceptable cost, knowable *before* trying). And upgrade the mid with imbalance — the **weighted mid**:
+
+```
+weighted_mid = (bid_qty × ask_price + ask_qty × bid_price) / (bid_qty + ask_qty)
+```
+
+**Why cross-weighted?** Size on the bid is upward pressure — if 40 ETH wants to buy and 8 wants to sell, the next trade is far more likely to happen up at the ask. So each side's price is weighted by the *opposing* side's quantity: the side with more force drags the estimate toward the price it's pushing against.
+
+Concrete: bid 3000.00 × 40, ask 3000.60 × 8 → (40×3000.60 + 8×3000.00)/48 = **3000.50**. Simple mid said 3000.30 — quoting an ask off 3000.30 means offering cheap to exactly the buyers about to push price up. (Doorstep of the *microprice* — full treatment at Level 4.)
+
+Sanity check: balanced book (10 v 10) → 3000.30 = the simple mid. No imbalance, no adjustment — the formula contains the basic model as its special case.
+
+**What it misses:** it's still a photo. No dynamics, and visible quantity taken at face value — 40 ETH of bids that would cancel at the first sign of trouble is not 40 ETH of support.
+
+##### Professional — the book as a maintained, distrusted instrument
+
+**Upgrade 1 — engineering: your book is a replica, and replicas drift.** The local book = one snapshot + every delta since, and the discipline is around *every*. Exchange deltas carry **sequence numbers**; the local book checks them. Getting update 4882 after 4880 means 4881 is gone — the book is now wrong somewhere, with no error message. Mechanical response: detect gap → declare the book dirty → stop trusting it (widen/hold quotes) → fresh snapshot → rebuild → resume. Not checking doesn't fail loudly; it fails as an unexplainable fill three minutes later.
+
+Some venues add a second detector: the **checksum**. Periodically the exchange runs its true book's top levels through a fixed formula (e.g. CRC32 over "price:qty|price:qty|...") and sends the result; you run the same formula over your replica and compare. Sequence numbers catch *missed messages*; the checksum catches *any* divergence — including your own book-maintenance bugs, where every message arrived but one was mis-applied. Neither says *where* the error is, only *that* one exists — and that's enough, because the response is identical: rebuild.
+
+| | Sequence number | Checksum |
+|---|---|---|
+| Catches | A message that never arrived / arrived out of order | Any divergence, any cause — including your own bugs |
+| Fires | The instant the gap happens | At the next periodic check |
+| Analogy | Numbered pages of a letter | Comparing letter-count totals of two recipe copies |
+| Can't do | Catch corruption when messages arrived but were mis-applied | Say where the error is |
+
+**Upgrade 2 — reading: flow, not just state.** The book only ever changes via three event types — **add**, **cancel**, **trade** — and the stream of them is its own signal. Same-shape books, different recent flow: heavy adds on the bid = confidence arriving; heavy cancels = confidence fleeing; heavy trades eating the ask = aggressive buying. The 40-ETH bid wall built by adds over ten minutes that held through two sell-offs is support; the same wall that appeared 400ms ago from serial cancellers is decoration. Identical photo, opposite conclusions — recoverable only from the movie. (Raw material for OFI at Level 6 and queue mechanics at Level 8.)
+
+Binding discipline: **visible liquidity is conditional liquidity** — size plans against what the book has historically *delivered* at that depth, never what it currently shows.
+
+#### 5. Why Should You Believe This? — One Fill, Read Three Ways
+
+Same moment: the 40-vs-8 book, and your resting ask at 3000.60 just got hit — you sold 1 ETH.
+
+- **Basic reader:** "Sold at 3000.60, mid 3000.30 — captured $0.30 of half-spread. Great fill."
+- **Intermediate reader:** "Weighted mid was 3000.50 — real edge was $0.10, not $0.30." Same fill, one-third the edge — and that's the difference between a strategy that looks profitable and one that is.
+- **Professional reader:** "Weighted mid 3000.50, *and* the event stream shows the ask side eaten by trades for 900ms while the bid side grows by adds — this buyer is part of a wave. My $0.10 is about to be negative. Reprice *now*, not after the next fill."
+
+One fill, three readings, three actions. The naive reader felt richest and was most wrong — and every difference came purely from how much of the book each could see and trust. Misreading the book converts directly into adverse selection (Level 0's second term, now with a mechanism attached).
+
+#### 6. Professional Standard (Jane Street / Citadel Level)
+
+The book is treated as a **sensor requiring calibration and health-monitoring**, not a data field:
+
+- **Integrity verified, not assumed** — sequence-gap detection on every message; checksum re-computation where the venue offers it. A dirty book means quoting defensively or not at all — no decision may read a known-broken instrument.
+- **Latency of book knowledge measured** — the local book is always slightly stale; institutions measure that staleness continuously, because a 10ms-old book in a fast market is a different instrument than in a quiet one (heart of Level 9).
+- **The book feeds everything** — fair value reads its shape, adverse-selection signals read its flow, queue estimates read trades-vs-cancels, execution reads depth. One corrupted book poisons all downstream systems at once — which is why integrity discipline is absolute.
+- **Own-impact awareness** — a market maker's quotes are *in* the book it reads. Institutions separate "the book" from "the book minus us," or the engine ends up reading its own resting size as market support — a quiet feedback loop of self-reassurance.
+
+#### 7. Summary
+
+| | |
+|---|---|
+| **What it is** | The live, aggregated stack of resting intent — read as shape (depth, imbalance) *and* flow (adds/cancels/trades) — maintained locally as a replica that can silently drift. |
+| **Why it matters** | Every downstream system reads this one instrument; misreading it becomes adverse selection, and a corrupted replica poisons everything at once. |
+| **Professional standard** | Sequence-verified, checksum-validated, staleness-measured local book; visible liquidity treated as conditional; flow read as a first-class signal beside state. |
+
+#### Sees vs Misses
+
+| Reading | What it sees | What it misses |
+|---|---|---|
+| Basic (top-of-book mid) | Instant price summary, the spread | Depth behind the top — can't price the cost of any real size |
+| Intermediate (depth + weighted mid) | What size costs (Σ within N ticks), which way the book leans | Dynamics — same shape, opposite meanings depending on flow; takes visible size at face value |
+| Professional (maintained replica + flow) | Book integrity (sequence/checksum), event-stream pressure, own-quote separation, staleness | Nothing structural — what remains is *interpreting* the signals (fair value L4, toxicity L6, queue L8) |
 
 ---
 
