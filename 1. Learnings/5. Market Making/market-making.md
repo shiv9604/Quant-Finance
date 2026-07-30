@@ -593,70 +593,114 @@ Intermediate and professional agree on the total; the split changes *what you do
 
 ### Level 4 — Fair Value
 
-#### Fair Value Estimation Mechanics
+**Status: ✅ Taught 2026-07-31.** (Supersedes the interim "Fair Value Estimation Mechanics" moved from Foundation — its content is absorbed and deepened below.)
 
-*(Interim — moved from Foundation 2026-07-10; will be rewritten to full end-to-end depth when this level is taught.)*
+#### 1. What It Is
 
-Fair value is the internal estimate of what the asset should trade at right now. It is the anchor of all quoting decisions. If fair value is inaccurate or slow to update, the market maker becomes exposed to adverse selection.
+A market maker sells **immediacy** at prices centered on an **opinion**. Levels 0–3 priced the immediacy (spread, EV, adverse selection); this level builds the opinion: **fair value (FV)** — the internal, private, continuously-recomputed estimate of what the asset is worth *right now*. Not the last trade, not any single visible price: a number that exists only inside the engine, built from observable references plus adjustments.
 
-**Last Traded Price Is Not Fair Value -**
-1. The last trade is only the most recent agreement between two parties.
-2. It may represent small size or temporary imbalance.
-3. It does not necessarily reflect current consensus value.
-4. Fair value must be continuously estimated, not assumed from the last print.
+Everything hangs off it. Level 3's EV formula — `EV = P(fill,d) × (capture − P(adverse|fill) × severity)` — measures capture and adverse **relative to FV**; if FV is wrong, every term is silently wrong too. And the brutal asymmetry: **the spread only protects against people who know *less* than your FV implies. Against anyone with a better opinion, your spread is a discount coupon.** Adverse selection is mostly just FV error, monetized by someone else.
 
-**Mid Price -**
-1. Mid price = (Best Bid + Best Ask) ÷ 2.
-2. It assumes both sides of the book are equally informative.
-3. It is the simplest baseline estimate of fair value.
-4. Many beginner systems start with mid price.
-5. It does not account for imbalance or short-term pressure.
+Distinction pros keep sharp: a **reference price** is something observable you anchor to (mid, index, another venue). **FV is your opinion, built FROM references plus adjustments.** Quoting straight off a reference with no adjustment means everyone with a better opinion trades against you.
 
-**Microprice (Order Book Weighted Fair Value) -**
-1. Microprice adjusts fair value based on order book imbalance.
-2. If bid size is significantly larger than ask size:
-   - Fair value shifts above the mid.
-3. If ask size is significantly larger than bid size:
-   - Fair value shifts below the mid.
-4. It captures short-term pressure before price moves.
-5. It reflects probabilistic drift rather than certainty.
+#### 2. Terminology essentials
 
-**Cross-Exchange Fair Value -**
-1. In crypto, price discovery may occur on different venues.
-2. If one exchange moves first, others become temporarily stale.
-3. Professional market makers monitor multiple venues simultaneously.
-4. Fair value may be derived from:
-   - Fastest exchange.
-   - Weighted average of exchanges.
-5. This reduces arbitrage-based adverse selection.
+- **Fair value (FV)** — the engine's private estimate of true worth right now. Last trade printed 3000.20 (a 0.01-lot sell into a thin bid); model says 3000.45 → quote around 3000.45, treat the print as noise.
+- **Mid price** — `(best bid + best ask)/2`. Bid 3000.00, ask 3000.60 → 3000.30. Size-blind: a 40-lot bid vs a 0.5-lot ask produces the same mid as a balanced book.
+- **Weighted mid** — `(bid_qty×ask_px + ask_qty×bid_px)/(bid_qty+ask_qty)`. Same book with 40×bid, 8×ask → 3000.50: shifts FV **toward the heavy side's opposite price** (heavy bid = buyers pressing = true price nearer the ask).
+- **Microprice** — the weighted mid with the assumption removed: defined as **E[mid a moment from now | current book]** (Stoikov), with imbalance→drift weights **calibrated from this asset's data**, not assumed. On BTC an 80/20 imbalance might predict +0.15 spreads of drift; on a thin alt, +0.45.
+- **Book imbalance (OBI)** — `bid_qty/(bid_qty+ask_qty)`, top-of-book or top-N. 40 vs 8 → 0.83. The most-studied short-horizon predictor in microstructure: high OBI → next tick more likely up.
+- **Trade-flow adjustment** — the book is *stated* intent (cancellable, spoofable); a trade is *committed* intent (taker fees paid). Recent aggressive flow nudges FV in its direction. (Full machinery — OFI, VPIN — at Level 6.)
+- **Lead-lag / leader venue** — price discovery concentrates; the leader's price is a preview of the follower's near future (typically 50–300ms). Quoting on a follower without watching the leader = volunteering as exit liquidity.
+- **Basis / funding** — a perp's FV ≠ spot: funding sustains a premium (**basis**). Spot 3000.00, funding holds perp ~0.02% rich → perp FV ≈ 3000.60. Anchoring to raw spot is a systematic 0.60 error.
+- **Staleness vs noise** — the update-speed dial: too slow → picked off; too twitchy → chase noise, burn queue position. Smoothing buys noise-immunity at the price of lag.
 
-**Momentum & Trade Flow Adjustment -**
-1. Repeated aggressive buys suggest upward short-term pressure.
-2. Repeated aggressive sells suggest downward short-term pressure.
-3. Fair value shifts in the direction of dominant trade flow.
-4. Flow imbalance can signal predictive short-term drift.
-5. Fair value models often incorporate recent trade intensity.
+#### 3. Why the Naive Approach Fails
 
-**Derivatives & Funding Adjustment -**
-1. In perpetual futures, price deviates from spot due to funding.
-2. Fair value must incorporate:
-   - Basis between spot and futures.
-   - Funding expectations.
-3. Ignoring basis leads to systematic mispricing.
-4. Cross-asset relationships influence true fair value.
+**The naive model:** "Fair value = the market price. Use the mid (or last trade) and center quotes on it."
 
-**Dynamic Updating -**
-1. Fair value must update continuously.
-2. Static estimates create stale quotes.
-3. Slow updates increase adverse selection risk.
-4. High-frequency environments require millisecond-level recalculation.
-5. Accurate and adaptive fair value estimation determines survivability.
+**Analogy — the used-car dealer.** A dealer quotes buy and sell prices on a car whose true price is posted nowhere. How does he decide it's worth $30,000? *Last auction print?* Might have been a rusted unit or a desperate seller. *Average of buyer offers and seller asks?* That's the mid — but 40 buyers lined up outside vs 2 sellers means the average is already stale. *The big-city auction house?* If prices there jumped 5 minutes ago, quote off the old local price and flippers buy his whole lot and truck it to the city. *Are people actually paying, or just haggling?* Ten who paid asking price today beat fifty who are "interested."
 
-**Core Insight -**
-1. Spread is placed around fair value.
-2. If fair value is wrong, spread cannot protect you.
-3. Persistent one-sided fills often signal misestimated fair value.
-4. Fair value accuracy is the foundation of professional market making.
+Every professional FV pipeline is these four instincts — imbalance, lead-lag, committed flow, better references — made numerical and fast. The naive model has none of them: it treats one stale, size-blind, single-venue reference as an opinion. **Misses:** everything that predicts the next move; it describes where the market *was*.
+
+#### 4. How It Works (Simple → Sophisticated)
+
+##### The estimator ladder — one book, three answers
+
+ETH-perp, top of book: **bid 3000.00 × 40, ask 3000.60 × 8**
+
+```
+                 3000.00×40                    3000.60×8
+  BID  ████████████████████████████████│██████  ASK
+                                       │
+        mid            3000.30 ────────┤   size-blind average
+        weighted mid   3000.50 ────────┤   leans toward heavy side's
+                                       │   opposite price (assumed weights)
+        microprice     3000.30–3000.55 ┤   E[next mid | book], weights
+                                       │   CALIBRATED per asset from data
+```
+
+- **Rung 1 — Mid (3000.30):** an average of *now*, when what's needed is an estimate of *next*. Reads this lopsided book exactly like a balanced one.
+- **Rung 2 — Weighted mid (3000.50):** encodes "buy pressure → price about to rise." Quoting the ask around 3000.50 instead of 3000.30 stops selling 0.20 cheap to exactly the people about to push price up. But it *assumes* imbalance maps linearly, at full strength, identically on every asset.
+- **Rung 3 — Microprice:** **measures** it — "when OBI = 0.83 on this asset, where is the mid 1s later, on average?" A forecast, not a fancier average. The level's core idea: **fair value is a prediction problem, not an averaging problem.**
+
+##### Layer 2 — Flow: the book can lie, trades can't
+
+Same book, but the last 2s printed 15 aggressive buys vs 2 aggressive sells → FV leans up *even if the book looked balanced* — takers vote with money. Simple form: `FV = microprice + k × flow_imbalance` over a short window, `k` calibrated like the microprice weights. **State says where the market rests; flow says where it's going. FV needs both.**
+
+##### Layer 3 — The leader venue: someone else's present is your future
+
+Binance ETH jumps 3000.30 → 3001.10; the follower venue's book hasn't moved; your ask rests at 3000.60. For ~100ms anyone watching both venues buys it and instantly holds 3001.10 — +0.50 for them, −0.50 markout for you, and (Level 3's 9× conditioning) these are exactly the fills you *do* get. Arbitrageurs run this as a full-time job. The fix is architectural: **subscribe to the leader; blend follower book with leader price, weighted by measured lead-lag** (which drifts — it too is calibrated, not assumed).
+
+##### Layer 4 — Basis: a perp's fair value is not spot
+
+Funding tethers perp to spot without equalizing them. Perp held ~0.02% rich → FV = spot + 0.60. Skip this and you're *systematically* 0.60 low: ask looks cheap all day, bid never fills, and the one-sidedness looks like bad luck when it's a forgotten constant. Basis moves slowly (minutes–hours) — a slow anchor under the fast layers, but skipping it makes every fast layer precisely wrong.
+
+##### Layer 5 — The dial: staleness vs noise
+
+The raw FV signal ticks ~10×/s and is jittery. Two bad extremes:
+
+- **Follow it raw** → cancel/replace on every flicker, lose queue position each time (Level 8 preview: queue position is an asset bought by waiting), pay message costs, get whipsawed by noise that mean-reverts before filling.
+- **Smooth it hard** (long EMA) → calm quotes, but FV lags ~400ms behind the real move — Layer 3's pick-off, self-inflicted.
+
+Standard resolution: **smooth the quote anchor, plus a fast-path override** — if raw FV gaps beyond a threshold (leader-venue jump, sweep), bypass the smoothing and reprice *now*. Small moves → patience wins; big moves → speed wins. Set per asset, revisited as regimes change.
+
+#### 5. Why Should You Believe This? — How FV Error Shows Up in Money
+
+FV error is almost never observed directly — only its symptoms, all Level 3 instruments:
+
+| Symptom | Diagnosis |
+|---|---|
+| Persistent one-sided fills (all buys fill, sells never) | FV sits below the market's — cheapest ask in town. Random flow fills both sides; **biased fills mean biased FV.** |
+| Systematically negative markouts on one side | FV updating too slowly (staleness) or missing a layer entirely (leader venue, basis). |
+| One-sidedness that never mean-reverts, constant size | A *constant* error — the basis-layer signature (a forgotten 0.60 looks like permanent bad luck). |
+
+The professional loop: **quote → fill → markout → attribute the loss to a layer → recalibrate that layer.** FV is never "done" — it's a model under continuous audit by your own fill tape. And the containment check (Level 0/2/3 signature): balanced book + no flow + no leader move + zero basis → every layer's adjustment is 0 and FV collapses to the mid — the naive model survives as the special case where nothing is happening.
+
+#### 6. Professional Standard (Jane Street / Citadel Level)
+
+- **FV is a per-asset calibrated forecast, not a formula with defaults** — imbalance→drift weights, flow coefficients, and lead-lag times are fitted from each asset's own tape and refitted as they drift. A constant weight in the FV pipeline is a bug waiting for a regime change.
+- **Multi-venue by construction** — the leader venue's feed is a first-class FV input for every follower venue quoted; who leads is itself measured, not assumed.
+- **All slow anchors priced in** — basis, funding expectations, index composition: the systematic constants are removed so the fast layers fight only genuine noise.
+- **The dial is engineered, not defaulted** — smoothed anchor + gap-triggered fast-path repricing; re-quote suppression below meaningful moves to preserve queue position; per-asset settings.
+- **FV audited by its own fills** — markout curves segmented by side/venue/state, one-sided-fill monitors, and losses attributed back to the specific layer that mispriced.
+
+#### 7. Summary
+
+| | |
+|---|---|
+| **What it is** | The engine's private, continuously-recomputed opinion of true worth: calibrated microprice + flow + leader venue + basis, smoothed with a fast-path override. |
+| **Why it matters** | Every EV term is measured relative to FV; adverse selection is mostly FV error monetized by someone else. The spread is a moat — FV decides where the castle is. |
+| **Professional standard** | Prediction not averaging: per-asset calibrated weights, leader-venue blend, slow anchors removed, engineered staleness/noise dial, audited by markout. |
+
+#### Sees vs Misses
+
+| Estimator | What it sees | What it misses |
+|---|---|---|
+| Last trade / mid | Where the market was; a symmetric reference | Size, imbalance, flow, other venues, basis — everything predictive |
+| Weighted mid | Top-of-book pressure direction | Assumes the imbalance→drift mapping instead of measuring it; single venue; no flow |
+| Microprice + flow | Calibrated short-horizon forecast from state + committed intent | The leader venue's preview; slow anchors (basis/funding) |
+| Full pipeline (+ leader, + basis, + dial) | All of the above, with noise-immunity and a fast path | Nothing structural — the remaining work is estimation quality: adverse prediction → L6, queue value → L8, latency floor → L9 |
 
 ---
 
