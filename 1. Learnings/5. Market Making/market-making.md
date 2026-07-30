@@ -498,47 +498,96 @@ The book is treated as a **sensor requiring calibration and health-monitoring**,
 
 ### Level 3 — Maker Economics
 
-#### Expected Value Per Fill Framework
+**Status: ✅ Taught 2026-07-24.** (Supersedes the interim "Expected Value Per Fill Framework" moved from Foundation — its content is absorbed and deepened below.)
 
-*(Interim — moved from Foundation 2026-07-10; will be rewritten to full end-to-end depth when this level is taught.)*
+#### 1. What It Is
 
-Market makers evaluate profitability on a per-fill basis, not per round trip. Round-trip spread capture is not guaranteed because fills are random and flow may be imbalanced.
+Level 0 gave the business identity; Level 3 zooms all the way into a **single maker fill** and prices every part of it. The unit economics of one fill — what it captures, what it costs conditional on having happened, and what a resting quote is worth *before* anyone fills it — is the number the entire business multiplies from: daily PnL ≈ fills_per_day × EV_per_fill, and turnover is merciless in both directions.
 
-**Spread Is Earned in Two Legs -**
-1. Total spread = Ask − Bid.
-2. Half-spread = Spread ÷ 2.
-3. When selling at the ask, only half-spread is earned initially.
-4. The second half of spread is earned only if the opposite side fills later.
-5. Round-trip completion is not guaranteed.
+What breaks if you get it wrong: quoted-spread accounting books storm losses as profit, greenlights scaling a strategy whose worst segment loses money per fill, and hides a bleeding ask side behind a profitable bid side. The wrong ledger doesn't just mismeasure — it points business decisions in the wrong direction.
 
-**Per-Fill Expected Value -**
-1. Expected Profit per fill = Half-spread − Expected adverse move.
-2. Half-spread represents immediate compensation.
-3. Expected adverse move represents average post-fill price movement against the position.
-4. If expected adverse move exceeds half-spread, expected value becomes negative.
-5. Spread alone does not determine profitability.
+#### 2. Terminology essentials
 
-**Why Round-Trip Spread Cannot Be Assumed -**
-1. After a fill, price may move away permanently.
-2. The opposite quote may never execute.
-3. Inventory may need to be closed at worse prices.
-4. Flow imbalance often results in one-sided fills.
-5. Therefore, full spread capture is conditional, not guaranteed.
+- **Entry edge** — earned at fill instant, measured against fair value *at fill time* (FV 3000.30, ask fills 3000.60 → $0.30; if FV had drifted to 3000.50, same fill earns $0.10). Never against the quote's original intent.
+- **Per-fill accounting** — each fill booked individually against FV, per side. Round trips complete unpredictably or never (inventory gets hedged or carried); aggregates hide which side bleeds.
+- **Markout** — the truth serum: FV drift at 100ms/500ms/1s/5s after each fill. Entry edge is what you think you earned; markout is what you kept.
+- **P(fill)** — probability a resting quote fills within a horizon (touch ≈ 40%/min, 3 ticks deep ≈ 8%). Every edge gets multiplied by it.
+- **E[adverse | fill]** — average FV move against you *conditional on being filled*. Unconditional drift $0.02; conditional on your ask being hit, $0.18 — 9×, because fills are a biased sample.
+- **Breakeven half-spread** = E[adverse|fill] + costs. Below it, every fill feels like revenue and is a loss.
+- **Realized vs quoted spread** — quoted $0.60; after post-fill drift you keep maybe $0.24. The gap *is* adverse selection in spread units.
+- **gpnl vs npnl** — gross (price + spread only) vs net (after fees). Strategy must be gpnl-positive first; fees are a deployment question (venue, tier), never a pricing input.
+- **Inventory cost per fill** — each fill hands you inventory (~$0.03/fill at 45s typical hold). Level 7 owns the machinery.
 
-**Adverse Selection Example -**
-1. Sell at 100.10.
-2. Half-spread earned = 0.10.
-3. Fair value jumps to 100.25.
-4. Adverse move = 0.15.
-5. Net expected value = 0.10 − 0.15 = −0.05.
-6. Even though total spread was 0.20, only half was earned at fill time.
+#### 3. Why the Naive Approach Fails
 
-**Core Insight -**
-1. Market makers optimize expected value per fill, not per idealized round trip.
-2. Positive EV requires:
-   - Half-spread > Expected adverse move.
-3. Persistent negative per-fill EV leads to slow capital erosion.
-4. Professional spread setting is based on expected post-fill risk, not theoretical full spread.
+**The naive model:** "I quote a $0.60 spread; every round trip earns $0.60; more fills, more money."
+
+**Analogy — the umbrella shop.** Buy umbrellas at $10, sell at $12: "$2 margin, guaranteed by arithmetic." But watch *when* they sell: sunny days, nobody buys. The moment a storm warning hits, the shop sells out in an hour — and an hour later wholesale is $15, because every supplier saw the same storm. He "earned $2" per umbrella on stock now costing $15 to replace: a $1 loss each, booked as profit by his margin math.
+
+The error, precisely: **his sales are not a random sample of days — they cluster exactly on the days his prices are about to be wrong.** Customers didn't cheat; they responded to information faster than his price tags. Posted margin real, realized margin negative — and "sell more umbrellas" deepens the loss. That's a maker fill: posted margin = quoted half-spread, storm = informed flow, wholesale jump = post-fill adverse move. Maker economics computes what a fill is worth *given that it happened* — the happening itself is information.
+
+#### 4. How It Works (Simple → Sophisticated)
+
+##### Basic — quoted-spread accounting
+
+`PnL = fills × quoted_half_spread` → 400 × $0.30 = "$120/day." Not insane — if counterparties were random tourists it would be exactly right. Its single hidden assumption: fills arrive independently of whether the price is about to be wrong. **Misses:** the conditioning; it can't tell a fill that kept its edge from the first tick of a storm.
+
+##### Intermediate — condition on the fill, measure with markout
+
+```
+EV_per_fill = entry_edge − E[adverse | fill]
+```
+
+The adverse term is conditional because of who chooses to trade: unconditional 5s drift $0.02, conditional-on-your-ask-being-hit $0.18 — the fill moments are enriched with informed moments. Measure it by averaging markout over your own fills. Concretely: $0.30 − $0.18 = **+$0.12/fill** → 400 fills = $48/day, not $120. The other $72 was quoted-minus-realized — adverse selection in dollars. Breakeven falls out: any quote capturing < $0.18 donates money. **Misses:** it's post-hoc (no P(fill) — can't price a *placement*), and it blends one constant across market states that differ 11×.
+
+##### Professional — decision-time EV, per quote, per state
+
+```
+EV(quote at depth d) = P(fill at d) × ( capture(d) − P(adverse|fill) × severity )
+                       + inventory_effect
+```
+
+- **P(fill) multiplies everything** — uncollected edge is worth zero. P(fill) falls with depth while capture rises: the best quote is the argmax of the product, computable, not intuitable.
+- **Frequency × severity split** — calm: 20% × $0.15 = $0.03; storm: 60% × $0.55 = $0.33 — 11× swing under an identical quoted spread. A blended $0.18 is wrong in both states: too timid in calm, too brave in storm. They also have different defenses (frequency → who you stand near; severity → how deep you stand).
+- **Inventory term** — a fill that reduces your position is worth more than its capture alone (Level 7).
+- **Sanity check:** P(adverse|fill)=0, inventory flat → EV = P(fill) × capture — the naive ledger survives as the special case where nobody knows anything. (Same containment signature as Level 0's identity and Level 2's weighted mid.)
+
+Discipline pair: **per-fill, per-side booking** (the unit of analysis is one fill on one side), and **gpnl first** — fees ($0.60/fill at 0.02% on $3,000 notional — 2× our entry edge!) decide *where* to deploy, never *how* to quote.
+
+#### 5. Why Should You Believe This? — The Same Day, Three Ledgers
+
+400 fills, quoted half-spread $0.30. Underneath: 340 calm fills (adverse $0.05) + 60 storm fills (adverse $0.60).
+
+| Ledger | Computation | Verdict |
+|---|---|---|
+| Basic (quoted) | 400 × $0.30 | **+$120** — "great day" |
+| Intermediate (blended markout $0.1325) | 400 × $0.1675 | **+$67** — "decent day" |
+| Professional (state-split) | 340×($0.30−$0.05) + 60×($0.30−$0.60) | **+$85 − $18 = +$67** — calm earned $85, storm **lost $18** |
+
+Intermediate and professional agree on the total; the split changes *what you do next*. Blended: "average fill earns $0.17, quote more." Split: **15% of fills destroy 21% of gross capture** — fix is state-conditional pricing (charge $0.30 in calm, ≥$0.60 in storm or quote deeper), an instruction a blended number literally cannot express. And the basic ledger's $120-vs-truth-$67 would greenlight scaling the losing segment. Wrong ledgers don't mismeasure — they mis-decide.
+
+#### 6. Professional Standard (Jane Street / Citadel Level)
+
+- **Markout curves computed continuously, segmented ruthlessly** — by side, symbol, depth-at-fill, state, counterparty class. The question is never "average markout" but "*which segment* is deteriorating" — averages bury the next loss.
+- **EV computed at decision time, per quote cycle** — on live estimates, before every placement. The storm surcharge arrives before the storm fills, not in the post-mortem.
+- **Every input is a living, decaying estimate** — P(fill), P(adverse|fill), severity maintained EWMA-style and validated against realized markout in a feedback loop. A constant in this formula is a bug waiting for a regime change.
+- **The per-segment EV sign gates everything upstream** — size, symbol selection, venue allocation. Negative-EV segments get repriced or exited, because turnover converts per-fill sign into monthly P&L direction with mechanical certainty.
+
+#### 7. Summary
+
+| | |
+|---|---|
+| **What it is** | The unit economics of one maker fill: EV = P(fill) × (capture − P(adverse\|fill) × severity) + inventory effect — per fill, per side, against FV, with markout as truth serum. |
+| **Why it matters** | Turnover multiplies the per-fill EV sign into monthly P&L; a wrong ledger reports profit while the strategy bleeds and scales the losing segment. |
+| **Professional standard** | Decision-time EV on live state-conditional estimates; ruthlessly segmented markout; gpnl-first with fees as deployment. |
+
+#### Sees vs Misses
+
+| Ledger | What it sees | What it misses |
+|---|---|---|
+| Basic (quoted × fills) | Gross capture at quote prices | Fills cluster on moments prices are about to be wrong — books storm losses as profit |
+| Intermediate (markout, blended) | True average EV; realized-vs-quoted gap; breakeven floor | No P(fill) (can't price placement); state variation — can't express "reprice the storm segment" |
+| Professional (decision-time, state-split) | Depth-vs-P(fill) optimization; frequency × severity; per-segment signs gating decisions | Nothing structural — the estimation of each input is the remaining problem: P(fill) → L8, adverse prediction → L6, fair value → L4 |
 
 ---
 
