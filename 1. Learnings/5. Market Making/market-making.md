@@ -706,7 +706,117 @@ The professional loop: **quote → fill → markout → attribute the loss to a 
 
 ### Level 5 — Spread Design
 
-*(Pending.)*
+**Status: ✅ Taught 2026-08-02.**
+
+#### 1. What It Is
+
+Level 4 built the anchor; Level 5 builds the **distance from it** — per side, per moment. Thesis: **the spread is a price, not a setting.** It's the price charged for immediacy, built up from costs plus margin, optimized against demand (fill rate), and repriced when inputs move. Desks that treat it as a tunable constant ("we quote 2 ticks") are selling a product without ever computing its cost of goods.
+
+#### 2. Terminology essentials
+
+- **Half-spread (δ)** — distance from FV to *one* quote; pros think per-side because the two sides will usually differ. FV 3000.45, ask 3000.75 → δ_a = $0.30.
+- **Spread decomposition** — `δ = adverse-selection cost + inventory-risk premium + ops costs + margin`. Each component moves independently, on its own clock.
+- **Breakeven floor** — the cost components with margin = 0. Below it every fill is a donation. A *floor*, not a target — and state-dependent (calm ≈ $0.13, storm ≈ $0.68 in the running example).
+- **Reservation price (r)** — the quote center, which is NOT FV once you hold inventory: *the price at which I'm indifferent, given what I already hold.* Long → r below FV; short → r above.
+- **Skew** — what the shifted center looks like from the quotes: one quote friendlier, one harsher. **Discount the exit door, tax the entrance.** Long 5 lots, FV 3000.45, center 3000.35 → ask $0.20 from FV (attractive → inventory shrinks), bid $0.40 (rare, and paid extra when it fills). Both sides always stay quoted.
+- **Inventory-risk premium** — holding costs even without adverse selection: σ√t risk over expected holding time (σ=$2/min held 45s ≈ $1.75 warehoused per lot).
+- **Avellaneda–Stoikov (A-S, 2008)** — the canonical framework: from FV, inventory q, risk aversion γ, volatility σ, and fill-decay k, it *derives* r = FV − q·γ·σ²·T and the optimal width. Its lesson: **spread and skew are outputs of one optimization, not style choices.**
+- **γ / k / T** — the A-S knobs: γ = how much I hate holding risk; k = how fast P(fill) dies with distance from the touch (the demand curve of the immediacy shop); T = how long I'm stuck holding what a fill gives me.
+- **Fill-rate/width tradeoff** — widening raises capture per fill and kills P(fill); the optimum is an interior argmax of the product, not a maximum of either.
+- **Widen vs pull** — hostile-conditions menu, in order: skew → widen → size-damp → post deeper. Pulling quotes is the retail reflex and the anti-pattern.
+- **Dynamic spread** — every input is a living estimate; a static spread is wrong in both directions within the hour.
+
+#### 3. Why the Naive Approach Fails
+
+**The naive model:** "Pick a spread that feels safe — say 2 ticks — and quote it symmetrically, always."
+
+**Analogy — the insurance premium.** An insurer prices a policy as expected claims + capital cost for warehoused risk + operating cost + margin. Underprice → every policy loses money with certainty at scale. Overprice → healthy customers leave and the ones who stay are exactly the sick ones — adverse selection *worsening* as you misprice. A quote is a policy insuring the counterparty against having to wait; the claim event is the price moving against you after the fill. Same components, same failure modes.
+
+The static-spread desk fails all of it at once: no floor computation (can't tell if 2 ticks even covers E[adverse|fill]), no state-dependence (one premium for sunny days and hurricanes), no inventory tilt (keeps buying while long), no demand curve (never asks what width maximizes revenue per minute). **Misses:** everything — it isn't pricing, it's a habit.
+
+#### 4. How It Works (Simple → Sophisticated)
+
+##### Step 1 — Decompose: what a half-spread must pay for
+
+Running scenario: FV = 3000.45, σ = $2/min, expected hold 45s, E[adverse|fill] = $0.18 (Level 3's conditional number), fees deferred (gpnl-first).
+
+```
+δ  =  adverse selection  +  inventory risk   +  ops costs  +  margin
+      $0.18 (E[adv|fill])   ~$0.07 (σ√t)        ~$0.01        what's left
+      ────────────────────────────────────────────────────
+      breakeven floor ≈ $0.26  →  quote δ ≈ $0.30 → ~$0.04/fill margin
+```
+
+Three consequences: (1) the floor is **state-dependent** — calm E[adv|fill] $0.05 → floor $0.13; storm $0.60 → floor $0.68; one number is wrong in every state. (2) Components move on **different clocks** — adverse in seconds, inventory risk in minutes, ops never — so repricing needs fast components on fast inputs. (3) **Margin is what's left, not what's aimed** — if competitors quote below your floor, the answer is deeper/smaller/skewed, never "match them" and never absent.
+
+##### Step 2 — Center: the reservation price
+
+Flat → center on FV. Long 5 lots → each buy adds risk, each sell removes it → the indifference point sits below FV: **r = FV − q·γ·σ²·T** — *shift = (how much I hold) × (how much I hate risk) × (how dangerous it is) × (how long I'll hold it).*
+
+```
+     bid 3000.05           r = 3000.35    FV = 3000.45      ask 3000.65
+          │◄── $0.40 from FV ──┤              │◄── $0.20 ──►│
+            discount the exit door · tax the entrance
+```
+
+The elegance: skew isn't a bolt-on mechanism — it's what *symmetric quoting around the honest center* looks like once the center accounts for inventory. A-S's second output, width `δ* = γσ²T/2 + (1/γ)·ln(1+γ/k)`, prices inventory risk and the fill-rate tradeoff in one expression: **center and width are both outputs of one optimization — not two independent knobs.**
+
+##### Step 3 — Width: the argmax, not the maximum
+
+| δ from FV | capture/fill | P(fill)/min | rev/min | EV/min (adverse $0.18) |
+|---|---|---|---|---|
+| $0.20 | $0.20 | 55% | $0.110 | **+$0.011** |
+| $0.30 | $0.30 | 40% | $0.120 | **+$0.048** |
+| $0.45 | $0.45 | 15% | $0.0675 | **+$0.041** |
+| $0.60 | $0.60 | 6% | $0.036 | **+$0.025** |
+
+Tight ($0.20, below the $0.26 floor): maximum activity, $0.011/min — busy and broke. Wide ($0.60, "safe"): $0.42 kept per fill, starving — $0.025/min. The optimum is interior (~$0.30), found by search over the product, and it *moves* when P(fill,d) or E[adverse|fill] moves. "Wider is safer" is true per fill and false per minute.
+
+##### Step 4 — The defense ladder
+
+Storm: E[adverse|fill] → $0.60, floor jumps past current width. Escalation order — every step stays in the book:
+
+1. **Skew** — trouble is directional → slide r; discount the exit, tax the entrance.
+2. **Widen** — the floor rose → δ follows it. Fewer fills is the point: the ones you get are paid enough. Every tick of widening should have a justification — the floor computation *is* the justification.
+3. **Size-damp** — cut quoted size so a sweep through the taxed side hits 0.3 lots, not 2. Width prices *each* fill; size caps the *sum*. Size→small is allowed; size→0 is a pull.
+4. **Post deeper** — further from the touch: P(fill) falls most for informed sweeps, and you build queue position (Level 8).
+
+**Not on the menu: pulling quotes.** It forfeits revenue, dumps queue position (an asset paid for by waiting), and blinds measurement — no fills → no markouts → estimates go stale exactly when the regime changes fastest. Decisively: *there is always a width at which quoting is +EV* — hostile conditions change the price of immediacy, not the presence. The pull reflex usually means the desk has no working floor computation: it can't price the storm, so it flees it.
+
+Skew's boundary (documented anti-pattern): defensive skew *repricess* both doors (tax the endangered side, discount the exit; drift capture is a bonus riding on the reprice). The offensive one-sided lean — "trend is down, quote only asks" — *removes* a door, converting the book into a naked momentum bet paid maker-style. Verified loss pattern; the distinction is reprice vs remove.
+
+##### Step 5 — Dynamic by construction
+
+Per quote cycle: FV (L4) → live E[adverse|fill], σ, q → per-side floor → r → δ per side via the argmax → place/keep through the re-quote dial (L4), so sub-noise repricing doesn't churn queue position. Every input is a living estimate; a static number anywhere in the chain is a bug waiting for a regime change.
+
+#### 5. Why Should You Believe This? — The Symmetric-Widening Trap
+
+Toxicity spikes, concentrated on the bid side (aggressive selling). A desk that widens **both** sides $0.30 → $0.80 "for safety": fills collapse (6%/min territory and below), revenue ≈ 0, measurement goes dark, and the barely-endangered ask was repriced out of the book for nothing. The precise response — skew (tax the bid, discount the ask) + size-damp on the bid — keeps revenue flowing on the safe side, keeps markouts flowing on both, caps the damage a sweep can do, and holds queue position. Blunt symmetric fear pays for "safety" twice: in revenue and in blindness. The containment check, as always: flat inventory + calm state + no signals → r = FV, δ_bid = δ_ask = calm floor + margin — the naive symmetric fixed spread survives as the special case where nothing is happening.
+
+#### 6. Professional Standard (Jane Street / Citadel Level)
+
+- **Spread as computed price** — decomposed components, each estimated live on its own clock; the floor recomputed per side per cycle; margin read as the residual, not assumed.
+- **A-S descendants everywhere** — center and width derived from one optimization; skew emerges from the honest center rather than a hand-tuned tilt.
+- **Constants that would notice reality changing** — γ backed out from capital limits, k fitted from own quote outcomes (fill rate by depth bucket), T measured from actual holding times, per asset. The test for any number in the pipeline: *if reality changed, would this number notice?*
+- **The full defense ladder, no pull rung** — skew / widen / size-damp / post-deeper, each continuous; quote-absence mechanisms deleted, not merely discouraged.
+- **Per-minute accounting** — width evaluated by EV per unit time (the argmax), never per-fill safety.
+
+#### 7. Summary
+
+| | |
+|---|---|
+| **What it is** | Pricing the distance from FV per side: decomposed floor + A-S center (reservation price) + width from the fill-rate argmax + the skew/widen/size-damp/post-deeper ladder. |
+| **Why it matters** | The spread is the product's price tag: below the floor every fill donates; past the argmax the shop starves; symmetric when it shouldn't be, it accumulates inventory into the move. |
+| **Professional standard** | Spread as computed, state-conditional price; constants measured per asset; defense that repricess and never absents. |
+
+#### Sees vs Misses
+
+| Approach | What it sees | What it misses |
+|---|---|---|
+| Static symmetric spread | Simplicity; survives only calm | No floor, no states, no tilt, no demand curve — a habit, not a price |
+| Decomposed floor + widen-on-fear | Cost coverage per fill | Per-minute revenue (argmax); directionality (skew); measurement blackout when width kills fills |
+| A-S center + width | Inventory-honest center; one optimization for both knobs | Its constants (γ, k, T) are assumed — right shape, unmeasured inputs |
+| Full dynamic ladder | State-conditional floors, measured constants, per-minute optimization, complete defense menu | Nothing structural — remaining work is input quality: adverse prediction → L6, inventory machinery → L7, queue value → L8 |
 
 ---
 
