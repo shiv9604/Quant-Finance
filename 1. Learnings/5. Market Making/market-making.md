@@ -822,139 +822,104 @@ Toxicity spikes, concentrated on the bid side (aggressive selling). A desk that 
 
 ### Level 6 — Adverse Selection
 
-#### Adverse Selection Mechanics
+**Status: ✅ Taught 2026-08-09.** *(Folds in the former standalone entries: VPIN · OFI · p_tox · TailScore · Adverse Markout.)*
 
-*(Interim — moved from Foundation 2026-07-10; will be rewritten to full end-to-end depth when this level is taught.)*
+#### 1. What It Is
 
-Adverse selection is the structural risk faced by market makers when counterparties possess superior short-term information. It occurs when a trade happens at a quoted price and the market immediately moves against that quote. Understanding this mechanism is critical for survival.
+Level 5 kept writing E[adverse|fill] into the floor as if someone hands it to us; Level 6 is where that number is born. Thesis: **a fill is not income — it is an information event, and adverse selection is its price.** You sell immediacy to whoever wants it, and the counterparties who want it most urgently are precisely the ones who know *why* price is about to move. So the trade doesn't just happen *before* the adverse move — it happens *because* of it: P(informed | they chose to trade with me) is far above P(informed) in the crowd. This is not bad luck and not a risk to eliminate; it is the cost-of-goods of the liquidity business, and the level's whole job is the professional treatment of a cost: **measure it (markouts), forecast it (p_tox), price it (probability × severity into the floor), learn it (your own fills as labeled data), and defend against it (skew / widen / damp / deeper — never absence).**
 
-**What is Adverse Selection -**
-1. Adverse selection occurs when someone trades against your quote.
-2. Immediately after the trade, price moves in the same direction as the aggressor.
-3. This implies the counterparty had better short-term information.
-4. The market maker traded at a price that became stale.
-5. It is the primary structural risk in liquidity provision.
+#### 2. Terminology essentials
 
-**Structural Cause -**
-1. Information in markets is not evenly distributed.
-2. Some participants react faster to:
-   - News.
-   - Cross-exchange price moves.
-   - Order book imbalance.
-   - Momentum shifts.
-3. Informed traders consume liquidity when price is about to move.
-4. Market makers provide liquidity and bear the risk.
-5. The loss is structural, not emotional or intentional.
+- **Adverse selection** — losses to counterparties with better short-term information. The offer selects its takers: whoever accepts your standing quote is disproportionately someone for whom it's mispriced.
+- **Adverse markout** — the measurement instrument: post-fill drift *against* your side at a fixed horizon. Bought at 100.00, mid 5s later 99.85 → markout −15 ticks. Engine canon: 5-second horizon; drift ≥1 tick against you flags the fill adverse. Positive markout = the fill was actually good.
+- **E[adverse | fill]** — the mean of the markout distribution *conditional on being filled* — Level 3/5's floor input. "Conditional" is the entire point: not "how much does price move," but "how much does it move given someone chose to trade with me."
+- **Toxic label** — the teacher signal: did this fill's markout cross the adverse threshold? Every fill becomes a labeled training example for the forecaster.
+- **VPIN** — flow toxicity read from *completed trades*: chop the tape into fixed-**volume** buckets (volume, not time — a bucket is the same amount of trading whether it took 4 seconds or 4 minutes), per bucket take |aggressive buys − sells| / total, roll the average. Informed traders trade one way; noise roughly cancels. High VPIN → one-sided, likely informed tape. The *confirming* signal.
+- **OFI (order-flow imbalance)** — pressure building in the *book* before trades fire: net (bid adds − bid cancels) − (ask adds − ask cancels). A quiet accumulator shows up here first. The *leading* signal; VPIN confirms it; markouts settle it.
+- **p_tox** — per-side probability that the *next* fill is informed, from a logistic score over live signals (book imbalance, momentum, flow/VPIN, trade acceleration). Per side because toxicity is directional: a large seller makes **bid** fills toxic while ask fills stay clean — one symmetric number would tax the wrong door.
+- **q99 (tail severity)** — how bad the bad case is: the 99th-percentile adverse markout, estimated *per toxicity bucket* so calm fills don't dilute storm tails. Thin books have violent q99; deep books don't.
+- **TailScore** — probability × severity in one number: p_tox × q99 (normalized). Asset A: p 0.8, q99 3 ticks. Asset B: p 0.3, q99 60 ticks. B is the dangerous one despite the lower probability — p_tox alone ranks them backwards.
+- **Toxic-flow clustering** — informed flow arrives in runs, not independently: repeated same-side fills while price drifts is the signature, and defense must escalate *during* the run, not after it.
 
-**Latency & Repricing Lag -**
-1. Fair value may shift before the market maker updates quotes.
-2. Faster traders detect this shift first.
-3. They execute against stale quotes.
-4. The market maker updates after being filled.
-5. The difference between execution price and updated fair value is adverse selection cost.
+#### 3. Why the Naive Approach Fails
 
-**Expected Value Perspective -**
-1. Expected Profit per fill = Spread − Expected adverse move.
-2. If adverse movement exceeds spread, expected value becomes negative.
-3. Spread alone does not guarantee profitability.
-4. Risk-adjusted spread relative to expected movement determines survival.
+**The naive model:** "Volatility is risk — widen with σ. And every fill is income: getting filled means my price was attractive."
 
-**Toxic Flow Clustering -**
-1. Adverse selection often clusters rather than occurring randomly.
-2. Repeated fills on one side signal predictive flow.
-3. Inventory builds in the wrong direction.
-4. Price continues drifting after fills.
-5. Loss compounds before adaptation.
+**Analogy — the standing offer on the car lot.** A dealer posts: *"I buy any Model X for $10,000, no questions asked."* The average Model X is worth $10,500 — the offer looks +$500 per car. But the cars that *show up* are not average cars: the owner who knows hers is worth $12,000 keeps it; the owner who knows the gearbox is dying sells within the hour. The standing offer is accepted exactly when it's wrong — the average car *offered* is worth $9,000, and the dealer loses on precisely the trades he wins. Note what the fix is **not**: refusing to buy (that's closing the shop). It's pricing the selection — inspect what you bought (markouts), watch who's hurrying toward the lot (OFI, VPIN), lower the standing price as sellers cluster (p_tox into the floor), and reserve for the rare engine-fire wreck (q99).
 
-**Continuous vs Jump Volatility -**
-1. Continuous volatility:
-   - Fair value moves gradually.
-   - Quotes can adapt.
-   - Inventory may mean-revert.
-   - Spread can compensate over time.
-2. Jump volatility:
-   - Fair value shifts discontinuously.
-   - Quotes instantly become stale.
-   - Fills cluster on one side.
-   - Price gaps before adjustment.
-   - Loss occurs before repricing.
-3. Jump volatility is more dangerous because it creates concentrated adverse selection.
+The naive desk fails on both of its beliefs. σ measures how much price wiggles *for everyone*; adverse selection is about *who trades with you* — flow can be lethal under calm σ (a patient accumulator picking off your asks) and benign under wild σ (noise churn you're paid to intermediate). And "fill = income" has the conditioning backwards: the fill is the moment the informed reveal themselves. Count fills as wins and you will maximize exactly the events that carry the loss.
 
-**News Event Impact -**
-1. News creates information shocks.
-2. True fair value changes abruptly.
-3. Faster participants react first.
-4. Slower quotes remain exposed.
-5. Liquidity providers experience elevated adverse selection.
-6. During extreme uncertainty, market makers may widen spreads significantly or pull liquidity.
+#### 4. How It Works (Simple → Sophisticated)
 
-**Core Insight -**
-1. Market makers fear variance of fair value more than variance of last traded price.
-2. If fair value is stable, volatility is manageable.
-3. If fair value is uncertain, quoting becomes dangerous.
-4. Survival depends on pricing and reacting to adverse selection risk efficiently.
+##### Step 1 — Measure it: the markout is the instrument
 
-#### Estimating Expected Adverse Move
+Record every fill; at +5 seconds compute `drift = (mid − fill_price)/tick × side`. The distribution of these numbers *is* the cost-of-goods report of the shop. Keep it live per side as fast rolling averages over the last ~100 fills: the **adverse rate** (share of fills ≥1 tick against) and the **adverse size** — together, E[adverse|fill]. This is where Level 5's $0.18 came from: accumulated, never assumed. One discipline point: measure from your *own* fills, not the public tape — the selection acting on *your* quotes is the thing being priced.
 
-*(Interim — moved from Foundation 2026-07-10; will be rewritten to full end-to-end depth when this level is taught.)*
+##### Step 2 — Price it: probability × severity, per side
 
-Expected adverse move is the average price movement against a market maker after a fill. It represents the structural cost of providing liquidity and must be estimated accurately for spread optimization.
+The mean is not enough — two assets with identical average markout can differ 20× in the tail, and the tail is what ends sessions. So decompose the floor's adverse component the way an insurer prices catastrophe:
 
-**What Is Expected Adverse Move -**
-1. It is the average post-fill price movement against the position.
-2. It is conditional on being filled.
-3. It differs for buy fills and sell fills.
-4. It reflects information disadvantage and repricing lag.
-5. Spread must exceed expected adverse move for positive expected value.
+```
+δ_adv (per side) = k · p_tox(side) · q99(current toxicity bucket)     [capped]
+                    ────────────────   ─────────────────────────
+                    chance the next     how bad "informed"
+                    fill is informed    gets when it happens
+```
 
-**Empirical Estimation Method -**
-1. Record each fill event.
-2. Record price at fixed intervals after fill (e.g., 10ms, 50ms, 100ms, 1s).
-3. Compute average movement against the fill direction.
-4. Estimate conditional expectation of adverse drift.
-5. Update this estimate continuously over time.
+Severity is estimated per toxicity bucket so that storm tails are priced from storm data. Before enough fills exist, a coarse fallback (½ · p_tox · realized adverse average — the Glosten–Milgrom shape) holds the floor up; the measured machinery takes over as evidence arrives.
 
-**Volatility Proxy Approximation -**
-1. Short-term volatility can serve as a rough proxy.
-2. Higher volatility generally increases expected adverse movement.
-3. Volatility alone does not measure informed toxicity.
-4. Noise volatility and informational volatility must be distinguished.
-5. Pure volatility-based models are incomplete but usable.
+##### Step 3 — Forecast it: p_tox from live signals
 
-**Order Flow Imbalance Conditioning -**
-1. Expected adverse move increases when aggressive flow is imbalanced.
-2. Repeated aggressive buys increase adverse cost after selling.
-3. Repeated aggressive sells increase adverse cost after buying.
-4. Flow-conditioned models outperform static volatility models.
-5. Expected adverse move is state-dependent, not constant.
+```
+score(side) = bias + w1·(signed book imbalance) + w2·momentum + w3·flow(VPIN) + w4·acceleration
+p_tox(side) = sigmoid(score)        — the sign of the signals flips between sides
+```
 
-**Latency Impact -**
-1. Adverse selection has two components:
-   - Information disadvantage.
-   - Latency disadvantage.
-2. Faster quote updates reduce repricing lag.
-3. Reduced lag lowers average adverse movement per fill.
-4. Latency does not eliminate informed flow, but reduces exposure to stale pricing.
-5. Superior latency improves risk-adjusted profitability.
+The same sell pressure that endangers the bid *protects* the ask — per-side by construction, which is what makes skew (Step 5) automatic rather than bolted on. The signals sit on a time ladder: **OFI leads** (pressure building in the book, before any trade), **VPIN confirms** (executed one-sidedness), **markouts settle** (the realized outcome). The engine reads the earlier signals so it doesn't have to pay the later one.
 
-**Competition Dynamics -**
-1. If latency becomes equal across participants:
-   - Spreads compress.
-   - Latency edge disappears.
-2. Edge shifts toward:
-   - Better fair value modeling.
-   - Better flow prediction.
-   - Superior inventory management.
-3. Tighter spreads increase fill frequency.
-4. Higher fill frequency increases inventory turnover.
-5. Profit margins per trade shrink in highly competitive markets.
+##### Step 4 — Learn it: your own fills grade the forecaster
 
-**Core Insight -**
-1. Expected adverse move is the key driver of spread design.
-2. It must be estimated empirically and dynamically.
-3. Latency reduces repricing risk but does not remove informational disadvantage.
-4. Spread optimization requires understanding conditional post-fill behavior.
-5. Professional market making is fundamentally risk-adjusted pricing of adverse selection.
+Each matured markout hands back (features at fill time, toxic label) — a free training example. Online logistic update: `w ← w − lr · (p_tox − label) · features`. What makes this institutional adaptation rather than a curve-fit are the guardrails: the learning rate shrinks with fill rate (a busy hour must not mean 100× faster drift); weights are pulled gently toward structural seeds and clamped to a band around them (the *shape* of the model is fixed; only its *sensitivity* adapts); and separate weight sets per flow regime — quiet / normal / toxic, classified by VPIN terciles — so storm learning never overwrites calm learning. Level 5's test is passed the honest way: if reality changed, these numbers notice — through your own fills, within the session — and they cannot run away from their structure.
+
+##### Step 5 — Defend it: the ladder, now with its wiring
+
+Level 5 gave the ladder; Level 6 supplies what each rung listens to:
+
+1. **Skew** — toxicity is directional, and p_tox is per-side, so the endangered side's δ_adv rises while the safe side's doesn't: the tax lands on the door being attacked, the exit stays discounted.
+2. **Widen** — δ_adv flows straight into the per-side floor: storm E[adverse] $0.60 → floor $0.68 (Level 5's numbers), automatically, side by side.
+3. **Size-damp** — quoted size × exp(−k · p_tox): smooth in the signal, small under stress, never zero.
+4. **Post deeper** — severity-scaled: reprice depth grows with q99, and the queue amplifier prices L8's gradient (back-of-queue fills are the sweeps).
+
+Plus the clustering response: a fill that marks out badly triggers a temporary extra widening **on the hit side only**, decaying over seconds — runs cluster, and the next one is usually coming. Every response is continuous, per-side, and *present*: no rung is "stop quoting" — the pull stays off the menu (Level 5's argument, now with its measurement: no fills → no markouts → the estimates go blind exactly when the regime moves fastest). Containment check: benign tape → p_tox → floor value, q99 small, scars decayed → δ_adv ≈ calm baseline; the naive desk survives as the special case of a market with no informed flow.
+
+#### 5. Why Should You Believe This? — The Clean-Average Time Bomb
+
+Two assets, both averaging −5 ticks of markout. Asset A: every fill −5, like clockwork. Asset B: 99 fills clean, then one −80 (thin book — when a sweep comes, it's violent). A mean-based floor prices them identically; B then detonates roughly once per hundred fills and hands back the day. Probability × severity separates them *before* the wreck: A is high-p/tiny-q99, B is low-p/huge-q99 → B's TailScore dominates → wider floor, damped size, deeper posting on B while A keeps quoting tight. And you don't have to take the model's word for it — the check is in your own blotter: bucket your fills by the p_tox printed at fill time. If high-p_tox fills mark out systematically worse than low-p_tox fills, the forecaster is real; if the buckets look the same, it's decoration. Reality grades it either way — that's the property to demand of every number in this level.
+
+#### 6. Professional Standard (Jane Street / Citadel Level)
+
+- **Markout tables as the desk's primary report** — per side, per horizon, per regime; fills treated as labeled data first and revenue second.
+- **Adverse priced as probability × severity** — per side, tails estimated per bucket; never a single mean, never symmetric by assumption.
+- **A time-ladder of signals** — book pressure leads, executed flow confirms, markouts settle; the desk reads the earliest signal it can trust.
+- **Learning with structure** — seeded shapes, banded adaptation, regime-split weights, activity-scaled steps: adapts to reality, cannot chase noise.
+- **Continuous defense only** — skew / widen / size-damp / post-deeper as smooth functions of p_tox and q99; quote-absence mechanisms deleted, not discouraged.
+
+#### 7. Summary
+
+| | |
+|---|---|
+| **What it is** | The cost-of-goods of liquidity provision: fills as information events, measured by markouts, forecast per-side by p_tox, priced as probability × severity (p_tox × q99) in the floor, learned online from your own fills, defended by the continuous ladder. |
+| **Why it matters** | The counterparty chooses when to trade — so the fills you get are exactly the ones most likely to hurt. Unpriced, this converts fill count into loss count; mean-only pricing leaves the tail to end the session. |
+| **Professional standard** | Own-fill markout accounting; probability × severity per side; leading→confirming→settling signal ladder; structured online learning; defense that reprices and never absents. |
+
+#### Sees vs Misses
+
+| Approach | What it sees | What it misses |
+|---|---|---|
+| σ-widening + fills-as-income | General risk level | Who it trades with: the conditioning (P(informed | fill)), directionality, the tail |
+| Own-fill markouts (mean) | The realized cost, per side | The forecast (pays for adverse before knowing) and the tail hiding in the average |
+| + p_tox forecast + q99 tails | Prices adverse before the fill, probability × severity, per side | Static weights go stale — the regime moves and the model doesn't |
+| + online learning + regime split + full ladder | A self-grading, structure-bound forecaster wired to continuous defense | Nothing structural — inventory pressure on the same quotes → L7; queue-graded fill quality → L8; the latency component of staleness → L9 |
 
 ---
 
@@ -1093,7 +1058,109 @@ Inventory-optimal quoting formalizes how market makers adjust quotes dynamically
 
 ### Level 8 — Queue / Fill Probability
 
-*(Pending.)*
+**Status: ✅ Taught 2026-08-09.**
+
+#### 1. What It Is
+
+Level 5 priced the distance from FV — and kept promising that "post deeper builds queue position" and that the re-quote dial protects it. Level 8 is that promise, paid: **a resting order's value is its price AND its place in line.** At each price level the exchange fills orders first-come-first-served (price-time priority): price gets you into the room; arrival time decides your place in the queue. So two desks quoting the *identical* price own different products — the one at the front gets filled by ordinary flow; the one at the back gets filled only when something eats everyone ahead of it. P(fill) is not a function of your price. It is a **race** between the aggressive flow arriving and the wall of volume standing ahead of you — and where you stand in that wall changes both how often you fill and *which* fills you receive.
+
+#### 2. Terminology essentials
+
+- **Price-time priority (FIFO)** — within a price level, fills go in arrival order. The book is a room of lines, not a wall of prices.
+- **Queue position (q_pos)** — normalized place in line: 0 = front, 1 = back. On an L2-only venue (Binance publishes level totals, no order IDs, no queue API) it is *never observable* — it must be estimated.
+- **V_ahead** — visible volume standing ahead of you. Place-time worst case: everything at your level arrived before you.
+- **Fill intensity (λ) / flow window** — aggressive volume per minute hitting your side; λ × horizon × avg trade size = the expected "chew" through the wall over your holding window.
+- **Share-form P(fill)** — the race as a share: `p ≈ V_flow / (V_ahead + V_flow)`. The textbook `exp(−V_ahead/λ̄)` treats the queue as passively decaying; the share form treats it as a *contested resource* — the professional choice.
+- **Trade vs cancel attribution** — a level shrinking means either a trade (consumes the FRONT — you advance by 100% of it) or a cancel (could be anywhere in the line — credit yourself only ~half). Botch this split and q_pos is systematically wrong in one direction.
+- **Position-dependent cancels** — cancels aren't uniform: the back of the queue is where the repricers live. Model the cancel's position as `p(x) = x·(1 − k(1−x))` with k learned from your own fill outcomes (Moallemi–Yuan).
+- **Queue value** — the option value of your current place: what you forfeit by cancelling. ≈ (your position's share of near-term fills) × (capture net of adverse). An asset, paid for with waiting.
+- **Churn** — cancel/replace so frequent you live permanently at the back of every line. Fresh price, worthless position.
+- **Queue-toxicity gradient** — fills that reach the back of the queue are conditionally worse: only a sweep big enough to eat the whole level gets there.
+
+#### 3. Why the Naive Approach Fails
+
+**The naive model:** "I'm quoting at the best bid, so I get filled at the market's fill rate. If FV moves a tick, cancel and re-post at the better price — fresher is better."
+
+**Analogy — the walk-in list at a packed restaurant.** Your place on the list is an asset you bought with waiting. Step out to check the place across the street and you re-join at the back. And the vicious part: if the host calls your name while you're 15th on the list, it's because the fourteen ahead of you were all seated at once — a bus tour is emptying the restaurant. Deep in the queue, being served isn't good news; it's the signature of exactly the event you didn't want.
+
+The naive desk fails three ways at once: it prices P(fill) off the price alone (two desks at one price ≠ one fill rate); every re-quote pays an invisible toll — back of the line — that never appears on any per-fill blotter; and it *selects itself into the worst flow*: perpetually at the back, the only fills that reach it are the sweeps that ate the level. Its markouts look "unlucky." They are structural.
+
+#### 4. How It Works (Simple → Sophisticated)
+
+##### Step 1 — P(fill) is a race, not a curve
+
+Running example, our bid at one price level:
+
+```
+Wall:  12 lots visible ahead; participation haircut ×0.5 (not all visible size is real) → 6 effective
+Chew:  λ = 4 aggressive sells/min × 0.9 lots avg × 1.5 min horizon ≈ 5.4 lots
+
+p_volume = 5.4 / (6 + 5.4)        ≈ 0.47      ← the race, as a share
+p_fill   = p_volume × (1 − q_pos)             ← discounted by place in line
+         ≈ 0.47 × 0.2 ≈ 0.09  just joined (q_pos ≈ 0.8)
+         ≈ 0.47 × 0.9 ≈ 0.42  after the line advanced (q_pos ≈ 0.1)
+```
+
+Same price, same book: joining fresh ≈ 9%, owning the front ≈ 42%. Level 5's fill-decay k is the right *shape* across depths (the demand curve of the immediacy shop); at a single price, the line dominates — so model the race, keep the exponential as a sanity diagnostic.
+
+##### Step 2 — Estimating your place when the venue hides the line
+
+L2-aggregated data gives level totals only. Queue position is *inferred*, rung by rung:
+
+1. **Place-time worst case:** on arrival, assume everything visible at your level is ahead of you. Pessimistic and true.
+2. **Trades at your level** consume the front — advance yourself by 100% of the traded volume.
+3. **Cancels** could come from anywhere — credit only ~50% as "ahead of you." (100% and you'll believe you're at the front while you're not; 0% and you never advance.)
+4. **Position-dependent refinement:** cancels come disproportionately from the back (that's where repricers live). `p(x) = x(1 − k(1−x))`; learn k per side from your own fills — predicted vs realized adverse markout, a small Bayesian update per fill, live only after ~30 observations. *Reality grades the estimator.*
+5. **Regime conditioning:** the same shrink reads differently by state — in toxic regimes, cancels ahead are likelier (informed makers pulling), so k's prior shifts across {quiet / normal / toxic}.
+
+##### Step 3 — The queue filters your customers
+
+Level 6 taught that a fill is an information event. Level 8 sharpens it: **the severity is graded by your queue position.** For flow to reach the back of a 12-lot line, one aggressor must consume all 12 — and orders that size are rarely uninformed. Front-of-queue fills sample ordinary flow; back-of-queue fills sample sweeps. So E[adverse|fill] (Levels 3/6) is not one number — it is a function of q_pos, and the Level 5 floor for a back-of-queue quote should sit *higher* than for a front-of-queue quote at the same price. The queue changes not just how often you're paid, but what each payment costs you.
+
+##### Step 4 — Queue value: the reprice toll-gate
+
+Cancelling destroys queue position — an asset. Repricing is therefore a *purchase*: a better price, paid for with your place in line. The gate:
+
+```
+reprice only if   EV(new depth, back of line) − EV(current depth, current q_pos)  >  queue_value
+
+queue_value ≈ 1/(q_ahead + 1) × λ × max(0, spread capture − adverse − fees)
+```
+
+Consequences: (1) near the front of a thick queue, queue value can exceed a tick of price improvement — *staying put at the "wrong" price is correct*; (2) the gate auto-loosens when the queue is thin or flow is dead (nothing to forfeit); (3) this is Level 5's re-quote dial made exact — sub-noise repricing is churning an asset for nothing.
+
+##### Step 5 — Dynamic by construction
+
+Every input is a living estimate: λ and average trade size as fast EWMAs off the tape; k learned per side from fill outcomes; regime priors switching the structure; participation (how much visible size is real) discounting the wall. Containment check: alone at your level → V_ahead = 0, q_pos = 0, pos_factor = 1 → p_fill collapses to the pure race share — the naive "price-only" model survives as the special case of having no line at all.
+
+#### 5. Why Should You Believe This? — The Churner's Paradox
+
+Two desks, same feed, same fair value. Desk A re-quotes on every tick of FV noise: always the freshest price — and its fills lose. Desk B re-quotes through the queue-value gate: sometimes a tick "stale" — and its fills earn. The mechanism is the whole level at once: A pays the reprice toll continuously (always at the back) → its p_fill collapses → the few fills that reach it are the level-eating sweeps (Step 3) → its realized E[adverse|fill] runs far above the population average its spread floor was computed from. Fresh price, poisoned fills; patient price, benign fills. The line, not the price, decided who profits — and no per-fill accounting shows the toll. Only a markout table *split by queue position* reveals it.
+
+#### 6. Professional Standard (Jane Street / Citadel Level)
+
+- **Queue position on the balance sheet** — resting orders carry a queue-value mark; every cancel decision is charged for it. Front-of-queue positions in thick books are treated as inventory.
+- **Probabilistic estimation wherever the venue hides the line** — worst-case join, trade/cancel attribution, position-dependent cancel models (Cont–Kukanov–Stoikov, Moallemi–Yuan), every parameter passing the Level 5 test: *if reality changed, would this number notice?* (k learned from own fills does; a hardcoded cancel split doesn't.)
+- **Markouts conditioned on queue position** — the toxicity gradient measured, not assumed; floors per q_pos band.
+- **Reprice through a value gate, never on price noise** — churn ratio watched as a first-class health metric.
+- **Simulation honors the queue** — the sim's fill model is FIFO with pro-rated cancels; a sim that fills you at price-touch overstates the whole business.
+
+#### 7. Summary
+
+| | |
+|---|---|
+| **What it is** | The line at each price: P(fill) as a flow-vs-wall race discounted by queue position; the position inferred probabilistically on L2-only venues; queue value charged on every cancel/replace. |
+| **Why it matters** | Same price, different place = different business — fill rate AND fill quality are graded by the queue; churn silently converts a market maker into a sweep collector with fresh prices. |
+| **Professional standard** | Queue position estimated, learned from own fills, and carried as an asset; markouts split by queue band; repricing tolled; sims FIFO. |
+
+#### Sees vs Misses
+
+| Approach | What it sees | What it misses |
+|---|---|---|
+| Price-only P(fill) ("I'm at the touch") | The demand curve across depths | The line at each depth — two desks, one price, different businesses |
+| Race model, no position | Flow vs wall — the true fill contest | Where you stand: a fresh join priced like the front of the line |
+| + estimated q_pos | Fill rate by place in line | Fill *quality* — the toxicity gradient; and the cost of losing the place |
+| + queue value + learned cancels | The full asset: rate, quality, reprice toll, self-grading estimator | Nothing structural — input quality: staleness of the estimate → L9; machinery that preserves the queue (modify vs cancel/replace) → L10 |
 
 ---
 
@@ -1329,67 +1396,9 @@ In real crypto market making, inventory is not isolated to a single asset or exc
 
 ### Standalone Terminology Entries — pending fold into home levels
 
-> Fold routing: VPIN / OFI / p_tox / TailScore / Adverse Markout → Level 6 ·
-> EWMA / Distribution → Level 14 · Market Regime → Level 15 · CVaR99 → Level 17 ·
-> Defensive Alpha → Level 15.
-
-#### VPIN — Volume-synchronized Probability of Informed Trading
-
-In any market, every trade is made by one of two types of participants:
-- **Noise trader** — buying or selling for their own reasons (rebalancing, cash need, random). No special information about where price is going.
-- **Informed trader** — buying or selling because they know something. Price is about to move in their direction.
-
-You cannot see who is who. But you can measure the imbalance in aggressive order flow.
-
-VPIN divides trading activity into fixed-volume buckets (not fixed time — volume). In each bucket it asks: what fraction of volume was aggressive buying vs aggressive selling?
-
-```
-Bucket with 70% aggressive buys, 30% aggressive sells → imbalance = |70 - 30| = 40%
-Bucket with 52% aggressive buys, 48% aggressive sells → imbalance = |52 - 48| = 4%
-```
-
-The logic: informed traders trade in one direction (they know price is going up → they buy). Noise traders are more random — their buying and selling roughly cancels out. When imbalance is high → likely informed flow. When imbalance is near zero → likely noise trading.
-
-VPIN is the rolling average of that imbalance across recent volume buckets.
-
-```
-High VPIN (> 0.7) → someone likely knows something right now
-Low VPIN  (< 0.3) → mostly random noise trading
-```
-
-**Why volume buckets and not time buckets?**
-Time is a poor measure of information arrival. In a slow market, 1 minute might carry 10 trades. In a fast market, 1 minute might carry 1000 trades. Volume buckets normalize for activity — each bucket represents the same amount of actual trading, regardless of how long it took.
-
-**Use in market making**: VPIN classifies the regime at fill time. A fill that arrives when VPIN is 0.8 is likely from an informed trader — the 100ms markout will be adverse. A fill at VPIN 0.2 is likely noise — the markout will be small. This is the basis for regime-bucketed markout analysis.
-
----
-
-#### OFI — Order Flow Imbalance
-
-VPIN looks at completed trades — what actually got executed. OFI looks at the order book itself — what is being added and removed before any trade happens.
-
-Every time the order book updates, something changes:
-- Someone adds a bid → buying pressure increases
-- Someone cancels a bid → buying pressure decreases
-- Someone adds an ask → selling pressure increases
-- Someone cancels an ask → selling pressure decreases
-
-OFI tracks the net change:
-
-```
-OFI = (bid size added − bid size cancelled) − (ask size added − ask size cancelled)
-
-Positive OFI → more buying pressure building in the book
-Negative OFI → more selling pressure building in the book
-```
-
-**The key difference from VPIN**: VPIN measures what already happened (completed trades). OFI measures what is building right now (order book changes). OFI is earlier in time — it detects pressure before any trade fires.
-
-A large buyer accumulating quietly shows up in OFI first (lots of bids being added to the book) before VPIN catches the actual aggressive trades hitting the ask.
-
-Together, OFI and VPIN give two angles on the same question: who is about to trade aggressively, and in which direction? OFI is the leading signal. VPIN is the confirming signal.
-
----
+> Fold routing: EWMA / Distribution → Level 14 · Market Regime → Level 15 ·
+> CVaR99 → Level 17 · Defensive Alpha → Level 15.
+> (VPIN / OFI / p_tox / TailScore / Adverse Markout — folded into Level 6, 2026-08-09.)
 
 #### EWMA — Exponentially Weighted Moving Average
 
@@ -1451,22 +1460,6 @@ Rare fills:   -30 to -50 ticks ← the tail — infrequent but severe
 
 ---
 
-#### p_tox — Probability of Toxic Flow
-
-A number between 0 and 1 computed by the engine before placing any quote. It answers: given everything observable right now — VPIN, recent drift, volatility — what is the probability that the next fill will come from an informed counterparty who knows price is about to move against the engine?
-
-```
-p_tox = 0.1  →  10% chance next fill is toxic — mostly safe to quote normally
-p_tox = 0.7  →  70% chance next fill is toxic — spread needs to be much wider
-p_tox = 0.95 →  almost certain next fill is informed — quoting here is very expensive
-```
-
-p_tox is computed per side (bid and ask separately) because toxicity is often directional. A large buyer makes ask fills toxic while bid fills may still be clean. A symmetric single p_tox would over-adjust the wrong side.
-
-p_tox summarises all toxicity signals (flow, drift, volatility) into one score the engine can act on continuously. Spread and size both respond proportionally — not a binary gate.
-
----
-
 #### CVaR99 — Conditional Value at Risk at 99th Percentile
 
 Regular average tells you the typical adverse move. CVaR99 tells you: in the worst 1% of fills on this asset, what is the average loss?
@@ -1489,52 +1482,6 @@ A system that ignores CVaR99 and only tracks average adverse move will systemati
 
 ---
 
-#### TailScore
-
-Combines p_tox and CVaR99 into one number capturing both how likely a toxic fill is AND how bad it will be:
-
-```
-TailScore = p_tox × CVaR99_severity
-```
-
-Why both are needed:
-
-```
-Asset A: p_tox = 0.8,  CVaR99 = -3 ticks   →  TailScore = 2.4   (likely toxic, small damage)
-Asset B: p_tox = 0.3,  CVaR99 = -60 ticks  →  TailScore = 18.0  (less likely, catastrophic when hits)
-```
-
-Asset B is far more dangerous despite lower p_tox. TailScore captures this. p_tox alone would make Asset A look more dangerous.
-
-TailScore drives spread widening continuously — not a binary cutoff. High TailScore → spread widens proportionally, size reduces. The engine keeps quoting at any TailScore level; it just prices the risk correctly.
-
----
-
-#### Adverse Markout
-
-Adverse markout is the post-fill price movement against your position direction, measured at a fixed time horizon.
-
-```
-You bought (bid fill) at 100.00
-Price at 100ms later: 99.85
-Adverse markout at 100ms = -15 ticks  (price moved down, against your long)
-
-You sold (ask fill) at 100.10
-Price at 100ms later: 100.25
-Adverse markout at 100ms = -15 ticks  (price moved up, against your short)
-```
-
-"Adverse" means against you. If price moved in your favour after the fill, the markout is positive — that fill was actually good for you. In practice most fills by an informed counterparty have negative markouts because the counterparty knew which way price was about to move.
-
-The average adverse markout is what the half-spread must exceed for the engine to have positive expected value:
-
-```
-fill_ev = half_spread − average_adverse_markout
-```
-
-If adverse markout > half_spread → losing money on every fill even if spread looks wide enough.
-
----
 #### Defensive Alpha (Expected Value Protection Layer)
 
 A professional market making system must continuously evaluate whether providing liquidity is profitable under current market conditions. Defensive alpha is the layer that estimates adverse selection risk and prevents participation in negative expected value states.
