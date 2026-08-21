@@ -93,6 +93,16 @@ When a prior term reappears in a new context:
   is from informed flow — now drives the spread through delta_adv"
 - Never write "as we covered in Layer 2" and skip the re-use
 
+**A level-number citation is NOT an explanation (sharpened 2026-08-21, PO directive).**
+Writing "(Level 5's shifted center)" or "(see Level 4)" and moving on is a violation —
+the learner cannot be assumed to decode a concept from its level number. Every
+cross-reference to a prior concept must carry the concept's meaning IN THE SENTENCE
+ITSELF, in one plain clause, e.g.: "the shifted center from Level 5 — quotes centered
+not on fair value but on a point pushed away from the inventory you hold, so your
+exit-side quote becomes the attractive one." The level pointer is optional garnish;
+the inline meaning is mandatory. Test: delete the level number from the sentence —
+does the sentence still teach the concept? If not, rewrite it.
+
 The goal is that by Layer 8, terms like p_tox, TailScore, VPIN, adverse markout are
 not things the user "learned once" — they are tools the user has picked up and put
 down in five different contexts and can use without thinking.
