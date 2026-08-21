@@ -925,134 +925,103 @@ Two assets, both averaging −5 ticks of markout. Asset A: every fill −5, like
 
 ### Level 7 — Inventory
 
-#### Inventory Risk & Inventory Dynamics
+**Status: ✅ Taught 2026-08-22.** (Supersedes the interim "Inventory Risk & Inventory Dynamics" and "Inventory-Optimal Quoting" sections — absorbed and deepened below.)
 
-*(Interim — moved from Foundation 2026-07-10; will be rewritten to full end-to-end depth when this level is taught.)*
+*Symbol key, restated at every use per the accessibility rule: **q** = how much inventory I currently hold (as a fraction of my allowed maximum: q = +0.5 = half my long limit) · **σ** (sigma) = how much the price typically wanders per minute — the asset's jumpiness · **γ** (gamma) = how much I personally hate holding risk (a dial, not a market fact) · **T** = how long I typically stay stuck holding a position · **FV** = fair value, my live estimate of true worth.*
 
-Inventory is the net position accumulated from filled quotes. While market making aims to remain directionally neutral, inventory introduces temporary directional exposure. Proper inventory control is essential for long-term survival.
+#### 1. What It Is
 
-**What is Inventory -**
-1. Inventory is the net position held due to executed trades.
-2. If more sellers hit the bid → long inventory accumulates.
-3. If more buyers lift the ask → short inventory accumulates.
-4. Inventory is unavoidable in market making.
-5. Eliminating inventory completely would eliminate liquidity provision.
+Inventory is the **exhaust of market making** — the net position that filling leaves behind. Not a choice: the only way to hold nothing is to never fill, and never filling is not a business. This level is the storeroom discipline: what holding actually costs, how the response must escalate as the position grows, when to stop managing it with quotes (get paid to shrink) and start paying to remove it, and how much position the operation may carry at all. The reframe everything descends from: **inventory is not an asset you own — it is risk you are warehousing until someone pays you to take it away.** Desks rarely die of a thin spread; they die holding a large position through a large move.
 
-**Why Inventory Is Dangerous -**
-1. Inventory introduces directional risk.
-2. If long and price falls → unrealized loss increases.
-3. If short and price rises → unrealized loss increases.
-4. Spread gains can be wiped out by large inventory moves.
-5. Inventory temporarily converts a market maker into a directional trader.
+#### 2. Terminology essentials
 
-**Inventory Compounding Risk -**
-1. Repeated fills on one side increase exposure.
-2. Inventory growth is nonlinear under persistent one-sided flow.
-3. Larger inventory increases sensitivity to price movement.
-4. Loss accelerates as exposure grows.
-5. Weak market makers fail due to uncontrolled compounding inventory.
+- **Inventory (q — my held fraction of the allowed maximum)** — net position from fills, expressed as a fraction of the cap (+0.5 = half the long limit). Fractions, not lots: "3 lots" means nothing without the cap; half-full is half-full in any warehouse.
+- **Directional exposure / delta** — what inventory is, risk-wise: long 5 lots at $3,000 = $15,000 riding on the next move. "Net delta ≈ 0" = positions summed across all venues per symbol hover near zero — earn the spread, not the direction.
+- **Carry cost** — what holding charges even when nothing goes wrong: warehoused price-wander ≈ σ (jumpiness per minute) × √t. *Plain words on √t (square root of time): wandering doesn't grow in a straight line — 4× the holding time gives only 2× the wander, because random moves partly cancel.* At σ=$2/min, 45s hold: ~$1.75 of "could be anywhere" risk per lot. Real cost, no invoice.
+- **The q² law** — *plain words on "squared" (quadratic): a number multiplied by itself — 2²=4, 5²=25 — so the thing grows faster the bigger it gets.* Pain grows with the square of the position: the same $1 drop costs $1 per held lot AND lands on top of losses the earlier lots already took. Consequence: defenses escalate **progressively** (a dimmer switch — response rising smoothly with the problem), never as a **cliff** (a light switch — nothing, nothing, everything at once). Markets punish cliffs: undefended right up to the edge, overreacting at it, exploitable to anyone watching.
+- **Skew-out (passive exit — get PAID to shrink)** — the shifted center: quotes centered not on FV (my fair-value estimate) but on a point pushed away from the side I hold. Long 5, FV 3000.45, center slides to 3000.35 → ask 3000.65 (only $0.20 from FV — buyers come to me first; each fill sheds inventory AND still earns spread) while bid 3000.05 ($0.40 away — rarely fills, overpaid when it does). Discount the exit door, tax the entrance.
+- **Hedge-out (active exit — PAY to be done)** — cross the spread myself, here or elsewhere: instant, certain, and priced (taker fee + spread crossed + the dent my own selling makes). The level's core choice: get paid slowly vs pay to be done now.
+- **Hedge band (no-hedge zone)** — inside ±X% of cap, quotes handle it; beyond, active hedging fires. The inside exists because hedging every lot instantly refunds the whole earned spread as taker fees — small inventory must breathe.
+- **Inventory half-life** — *plain words: the time for something to shrink to half its size.* If 6 lots typically becomes ~3 in 60s of normal two-way flow, half-life = 60s. It is the measured version of T (stuck-time) — and an alarm: half-life stretching means the exit side stopped filling → flow turned one-sided.
+- **Inventory cap** — the hard boundary, set by survival math (worst plausible move × max position must be a shruggable loss), never by confidence. At the cap the growing side stops quoting — the one legitimate quote-absence: a risk limit binding, not a market opinion.
+- **Adverse inventory** — toxic flow *gives* you inventory precisely when it's about to lose value (they sold to you because it's going down). Position built during high-p_tox moments (p_tox = estimated probability a fill is from informed flow) is born already losing. "Inventory is neutral holding" fails like "a fill is income" failed.
+- **Mark-to-market** — count inventory PnL at current FV every cycle, not at exit. The loss already exists and updates live; the question is never "how do I get back to breakeven" (a gambler's prayer) but "what does the next second of holding cost vs the price of flat."
 
-**Inventory Drift -**
-1. Occurs when order flow remains one-sided for a period.
-2. Often coincides with informed volatility or trend formation.
-3. Inventory builds in the same direction as market drift.
-4. Early detection is critical.
-5. Ignoring drift leads to escalating exposure.
+#### 3. Why the Naive Approach Fails
 
-**Inventory Control Mechanisms -**
-1. Quote skewing:
-   - Shift quotes in the direction that reduces exposure.
-2. Asymmetric spread adjustment:
-   - Widen the risky side more than the safer side.
-3. Size reduction:
-   - Reduce quantity on the side causing imbalance.
-4. Hard inventory limits:
-   - Define maximum allowable exposure.
-5. External hedging:
-   - Hedge when exposure exceeds tolerance.
+**The naive model:** "Inventory is fine — I only lose if price moves against me; flat-PnL holding is free, and I'll get out at breakeven eventually."
 
-**Spread–Inventory Tradeoff -**
-1. Tighter spreads increase fill rate.
-2. Higher fill rate accelerates inventory accumulation.
-3. Wider spreads reduce fill frequency.
-4. Spread decisions directly affect inventory volatility.
-5. Spread and inventory management are structurally interconnected.
+**Analogy — the fish stall.** A fishmonger buys at 90 from the boats, sells at 110 to customers. Between the two, fish sits on ice and **spoils** — holding itself costs, no bad day required (= carry). Ten unsold crates at dusk is worse than 10× one crate: the same price drop hits every crate at once, on top of losses already taken (= the q² law). Overstocked by afternoon, he rewrites the board — sale price for customers, stingy price to the boats (= skew-out: paid to shrink). At 6pm with 8 crates and a storm coming, he calls a restaurant and sells at 85 — below his 90 cost — because certain small loss now beats expected bigger loss overnight (= hedge-out). And however good the boat price, he never buys past what the ice-box holds — capacity set by what one bad night can cost, never by confidence in tomorrow (= the cap).
 
-**Crisis Scenario Response -**
-1. If long inventory and price accelerates downward:
-   - Widen spreads.
-   - Skew quotes downward.
-   - Reduce bid size.
-2. The objective shifts from profit maximization to risk control.
-3. Survival takes priority over spread capture.
+The naive desk books none of this: carry uncounted (over-holds — every hold looks free until it isn't), escalation absent or cliff-shaped, no paid-exit preference, no band, no honest ledger ("waiting for breakeven" while the mark-to-market loss already exists). **Misses:** the position is the risk; the PnL is just its shadow.
 
-**Core Insight -**
-1. Retail mindset focuses on realized profit.
-2. Market maker mindset focuses on current exposure.
-3. Inventory awareness must be continuous.
-4. Controlled inventory determines long-term viability.
+#### 4. How It Works (Simple → Sophisticated)
 
-#### Inventory-Optimal Quoting (Avellaneda–Stoikov Intuition)
+##### Step 1 — Price the holding: carry
 
-*(Interim — moved from Foundation 2026-07-10; will be rewritten to full end-to-end depth when this level is taught.)*
+While holding q = 5 lots (five units of my inventory) at σ = $2/min (typical wander) for T = 45s (stuck-time), plausible wander ≈ σ×√T ≈ $1.75/lot → ~$8.75 of warehoused "anything can happen." Charge it forward: a fill that *reduces* the position is worth more than its spread capture — it refunds warehoused risk (the inventory term in the maker-economics EV formula). What this alone still misses: the charge must *escalate* with position.
 
-Inventory-optimal quoting formalizes how market makers adjust quotes dynamically based on inventory, volatility, and risk tolerance. The objective is to maximize expected spread capture while penalizing inventory risk.
+##### Step 2 — Escalate like a dimmer: the q² curve
 
-**Core Optimization Objective -**
-1. Market makers aim to maximize:
-   - Expected spread profit − Inventory risk penalty.
-2. Spread generates income.
-3. Inventory introduces directional variance.
-4. Optimal quoting balances income generation with risk control.
-5. Ignoring inventory leads to compounding exposure risk.
+Center shift = **q × γ × σ² × T** — *(how much I hold) × (how much I hate risk) × (jumpiness, squared — because wander compounds) × (how long I'll be stuck)*. Sanity checks: flat (q=0) → no shift, quote around FV ✓. Sleepy asset (σ tiny) → tiny shift even loaded ✓. Slow-turnover asset (T long) → bigger shift for the same holding ✓. Each extra lot shifts the center further than the last one did (the q² law acting), and size tilts follow the same curve. Never a cliff: a threshold in a risk response is a bug unless it is the final hard cap. What this still misses: escalating quotes only *shrinks slowly* — it needs two-way flow.
 
-**Risk Aversion Parameter (γ) -**
-1. γ represents sensitivity to inventory risk.
-2. Higher γ:
-   - Wider spreads.
-   - Stronger quote skew.
-   - Lower inventory tolerance.
-3. Lower γ:
-   - Tighter spreads.
-   - Mild skew adjustments.
-   - Higher tolerance for inventory swings.
-4. γ reflects capital structure, drawdown constraints, and risk mandate.
-5. Risk aversion determines how aggressively exposure is controlled.
+##### Step 3 — The default exit is the paid one: skew-out
 
-**Reservation Price -**
-1. Reservation price is the inventory-adjusted fair value.
-2. It shifts away from raw fair value depending on inventory.
-3. If long inventory:
-   - Reservation price shifts downward.
-4. If short inventory:
-   - Reservation price shifts upward.
-5. Quotes are placed around reservation price instead of raw fair value.
-6. This automatically embeds inventory control into pricing.
+Preference order, always: **get paid to shrink before paying to shrink.** The tilted quotes do three jobs: the discounted exit side attracts the flow that reduces me (still earning spread over FV on the way out); the taxed entry side slows accumulation and overpays me when it fills; both scale automatically with the q² pressure. Add size asymmetry (bigger on the exit side, smaller on entry) and the position acquires a natural half-life (6 lots → ~3 in 60s of two-way flow). Watch that half-life live: it is a cost input (stretching = T rising = carry rising = skew harder) and an alarm (frozen = exit side stopped filling = flow one-sided). What skew-out misses: **in a trend it fails** — the discounted exit barely fills while the taxed entry keeps getting hit. Waiting becomes a bet.
 
-**Optimal Spread Determinants -**
-1. Spread increases with:
-   - Volatility.
-   - Risk aversion (γ).
-   - Inventory magnitude.
-   - Shorter remaining time horizon.
-2. Higher volatility requires greater risk compensation.
-3. Larger inventory increases risk exposure.
-4. Short time horizons require faster inventory neutralization.
-5. Spread is dynamic and state-dependent.
+##### Step 4 — When passive fails: the hedge band
 
-**Time Horizon Effect -**
-1. As trading horizon shortens, inventory becomes more dangerous.
-2. Stronger skew is required near session end.
-3. Inventory liquidation pressure increases over time.
-4. Risk penalty grows as time to neutralization decreases.
-5. Time awareness is embedded in optimal control models.
+```
+inside band (|q| ≲ 0.3 of cap)  →  quotes handle it: skew + size tilt
+outside band                    →  active hedge: cross the spread, pay
+                                   fee + spread + impact, be flat NOW
+```
 
-**Core Insight -**
-1. Inventory should influence quote center dynamically.
-2. Spread and skew are not independent decisions.
-3. Risk aversion directly shapes quoting behavior.
-4. Professional market making embeds inventory into pricing mathematically.
-5. Avellaneda–Stoikov provides a foundational framework for dynamic optimal quoting.
+Why the inside exists: hedging every lot refunds the earned spread as taker fees. Why the outside exists: beyond some q (held fraction), the per-second carry cost — growing with q², the square of the holding — exceeds the *one-time certain* cost of exit; the restaurant call becomes mathematically cheap. Professional refinement: **the band is not static** — it tightens when toxicity is high (adverse inventory is born losing), when σ (jumpiness) spikes, when stuck-time stretches. A fixed band is a calm-day tool in all-weather clothes.
+
+**Where to hedge — the cheapest door, itemized.** Same-venue unwind is a candidate, not a taboo; compare all-in:
+
+```
+same venue:   spread crossed + taker fee + impact on MY OWN book (+ self-trade risk)
+cross venue:  spread crossed + taker fee + impact there + basis risk + funding + later unwind
+```
+
+Three reasons the away door often wins in exactly the moments it's needed: (1) **in a crisis the home book is the worst book** — the same one-sidedness that broke skew-out makes the home exit thin and expensive, while another venue has a different crowd; (2) **dumping into your own market bombs your own shop** — it moves the FV you quote around, trips your own defenses, marks down the rest of your inventory; (3) **self-trade** — your aggressive exit can hit your own resting quote (prohibited or pointless). And netting counts: +5 here and −5 there IS flat in direction; the residual (basis — the two prices drifting slightly apart) is a far smaller, mean-reverting risk than naked direction.
+
+##### Step 5 — The boundary and the crisis
+
+**Cap:** survival arithmetic (worst plausible move × max position ≤ shruggable loss). Approaching it, everything escalated smoothly already; at it, the growing side stops — the one legitimate absence (solvency wall, not sentiment).
+
+**Crisis playbook** (trend down, long q = 0.7 of cap, toxicity high, half-life frozen): survival math replaces profit math. All at once: center slides hard (q²-scaled skew, now large); entry side damps toward minimum size and deepens — *damped to near-dark, never disabled* (the tiny quote is a paid sensor; disabling is the cliff with a re-entry problem); exit side stays present at honest aggressive-but-paid prices; the band — tightened by toxicity + σ + stuck-time — fires the active hedge early through the cheapest door; mark-to-market keeps the ledger honest throughout. What survives the day is not the spread earned — it is the position that wasn't there when the move extended.
+
+#### 5. Why Should You Believe This? — Withdraw vs Near-Dark
+
+The strongest objection, taken seriously: *"if the market is purely one-sided and I can't exit if filled, why quote at all until conditions normalize?"* The ladder's terminal state IS almost withdrawal — endangered side at the storm floor, minimum size, posted deep: worst case is one tiny overpaid fill. So why keep the 1-lot token instead of zero? Because the difference isn't PnL — it's **information and re-entry**: (1) every estimate (markouts, p_tox — the informed-fill probability — fill rates, half-life) feeds on your own quotes; withdraw and the estimates freeze at storm values, and you're left reading the public tape, which tells you what *others* experience, not what *your quotes* would — the desk that stayed present re-tightens minutes earlier, and the post-storm minutes (wide spreads, freshly two-way flow) are historically the best of the day; (2) "return when normal" needs a re-entry threshold — a cliff that flaps at the boundary, is exploitable once observed, and can't be calibrated while absent; the continuous ladder has no re-entry decision at all — the dials that widened simply narrow; (3) queue position — withdraw and re-enter at the back of every queue exactly when priority is most valuable. Empirical seal: quote-absence mechanisms (no-trade gates, per-side disables, micro-suppression) were built into this program's engine in early iterations and removed one by one — measured over full cycles they cost more than they saved. Absence remains legitimate in exactly two rule-based forms: the inventory cap binding, and catastrophic stop events. Discretionary absence — "conditions feel bad" — is forbidden, because the machine's whole claim is that "bad" is a number, and the number goes in the price.
+
+#### 6. Professional Standard (Jane Street / Citadel Level)
+
+- **Carry booked continuously** — inventory PnL marked to FV every cycle; the holding cost accrues in the ledger as it accrues in reality, per position, per venue.
+- **Progressive escalation, no interior cliffs** — skew/size/width respond smoothly to q (held fraction) with the response *accelerating* in the tail per the q² law; the only discontinuity is the final hard cap.
+- **Band as a living function** — the hedge trigger reads σ (jumpiness), fees, toxicity, and inventory age — not a constant; passive-exit failure (frozen half-life) mechanically advances the active exit.
+- **Cheapest-door routing with fail-loud** — every hedge ranked on itemized all-in cost (spread, fee, impact, basis, funding, freshness, headroom); self-trade excluded by construction; "no eligible door" is an explicit alarm, never silent unhedged exposure.
+- **Net-delta accounting against exchange truth** — flat means the venue-summed position verified against exchange statements, with tolerances at least as tight as the truth oracle's.
+
+#### 7. Summary
+
+| | |
+|---|---|
+| **What it is** | The storeroom discipline: carry priced (σ√t per lot), escalation on the q² curve via the shifted center, skew-out as the paid default exit, a living hedge band choosing when to pay to be done, cheapest-door routing, and a survival-math cap. |
+| **Why it matters** | Inventory is how market makers actually die: unpriced carry over-holds, cliffs lurch, frozen half-lives unnoticed become trend-riding positions, and the cap is the difference between a bad day and the last day. |
+| **Professional standard** | Continuous mark-to-market, progressive q²-shaped response, signal-conditional band, itemized all-in exit routing, truth-verified net delta. |
+
+#### Sees vs Misses
+
+| Approach | What it sees | What it misses |
+|---|---|---|
+| "Flat PnL = free holding" | Realized wins and losses | Carry — the warehoused wander (σ√t) charged invoice-free; adverse inventory born losing |
+| Fixed skew per lot (linear) | Inventory influences quotes | The q² acceleration — same response at q=0.1 and q=0.8 is wrong at both ends |
+| Skew-only exits | The paid exit; spread earned while shrinking | Trend failure: passive exit needs two-way flow; frozen half-life = waiting became a bet |
+| + hedge band + routing + cap | Paying-to-exit priced and routed through the cheapest door; solvency boundary | Nothing structural — remaining work is input quality: queue value of the resting quotes → L8, latency of the exits → L9, cross-venue machinery at depth → L16 |
 
 ---
 
