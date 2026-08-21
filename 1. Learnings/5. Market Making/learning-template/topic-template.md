@@ -61,7 +61,28 @@ This applies to: signal names (VPIN, OFI, TailScore), model types (EWMA, distrib
 Format: explain the term → ask if it landed → only proceed when confirmed.
 Goal: the user should never be reading through a topic while silently not understanding a foundational word.
 
-## Repetition Rule (HARD)
+## Non-Quant Accessibility Rule (HARD — added 2026-08-21, PO directive)
+
+The learner is NOT from a quant/math/statistics background. Two obligations, everywhere
+(terminology sections, teaching, KCMME checks, doc write-ups — no exception):
+
+1. **Every symbol, every time.** Whenever a symbol or short variable name appears
+   (q, γ, σ, δ, T, k, λ, α, m, r, …), attach its plain-language meaning in-line at
+   EVERY appearance, not just the first — e.g. "q (how much inventory I currently
+   hold)", "σ (how much the price typically moves per minute)". A bare symbol with no
+   gloss is a violation even if it was defined two paragraphs earlier. The learner
+   should never have to scroll back to decode a letter.
+
+2. **Every math/stat/quant word gets a plain-words mini-explainer at first use in the
+   section.** This covers terms like: quadratic, linear, variance, percentile,
+   z-score, EWMA, sigmoid, regression, convex, argmax, distribution, correlation,
+   half-life, "grows with the square", "cliff vs progressive", clamp, floor/cap.
+   Format: the term, then one or two sentences of what it means using everyday
+   objects/numbers, then the domain use. If a concept can't be explained without
+   another math term, explain that one too — chain down to everyday language.
+
+Test before sending any teaching block: read it as someone who stopped math at
+school algebra. Every letter decoded? Every math word grounded? Then it ships.
 
 Terms are not mastered after one explanation. Every time a prior-layer term appears
 in a new layer, use it actively — do not just reference it by name and move on.
