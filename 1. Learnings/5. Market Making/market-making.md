@@ -1027,7 +1027,11 @@ The strongest objection, taken seriously: *"if the market is purely one-sided an
 
 ### Level 8 — Queue / Fill Probability
 
-**Status: ✅ Taught 2026-08-09.**
+**Status: ✅ Taught 2026-08-09 · retaught + deepened 2026-08-25.**
+
+*Symbol key (glossed at every use per the accessibility rule): **P(fill)** = the chance (0–100%) a resting quote actually trades within a window · **q_pos** = my estimated place in the line (0 = front, 1 = back) · **V_ahead** = the lots standing in front of me that must leave before my turn · **λ** (lambda) = how many aggressive orders arrive per minute · **k** (fill-decay) = how fast fill rate dies with distance from the mid · **FV** = fair value, my live estimate of true worth · **EV** = expected value, the average profit of a decision repeated many times.*
+
+*Plain words on "gradient" (used throughout): a value that changes gradually and steadily as you move along something — a slope, not a jump. A hill's steepness, a color fading blue→red. The fill-quality gradient: fills worsen smoothly position-by-position toward the back of the queue — 1st in a 40-lot line maybe 15% of fills toxic, 20th maybe 30%, 39th maybe 70% — because the only event that reaches the back is one big enough to eat everyone ahead first, which is a sweep, and sweeps are informed. The dimmer/cliff distinction from Level 7 is the same family: a gradient is what the dimmer produces.*
 
 #### 1. What It Is
 
@@ -1085,6 +1089,15 @@ L2-aggregated data gives level totals only. Queue position is *inferred*, rung b
 ##### Step 3 — The queue filters your customers
 
 Level 6 taught that a fill is an information event. Level 8 sharpens it: **the severity is graded by your queue position.** For flow to reach the back of a 12-lot line, one aggressor must consume all 12 — and orders that size are rarely uninformed. Front-of-queue fills sample ordinary flow; back-of-queue fills sample sweeps. So E[adverse|fill] (Levels 3/6) is not one number — it is a function of q_pos, and the Level 5 floor for a back-of-queue quote should sit *higher* than for a front-of-queue quote at the same price. The queue changes not just how often you're paid, but what each payment costs you.
+
+##### Step 3b — Cold start: seeding the estimators before any fills exist (added 2026-08-25 Q&A)
+
+Both learned numbers in this level need fills to learn from — so what feeds them on a fresh run? A **ladder of fallbacks**, and the two k's start from different rungs:
+
+- **The queue cancel-bias k** (how much of an unexplained level-shrink happened *ahead* of me) can only be graded by my own fills — so its cold start is pure priors: a hand-set conservative default → a per-regime prior (toxic regimes: informed makers pull more, so cancels skew more toward "ahead") → the learned per-side value takes over only after ~30 fill-observations, the point where its uncertainty shrinks below the prior's. Same born-with-a-safe-opinion pattern as the toxicity model's Glosten-Milgrom warmup fallback and the p_tox seed weights.
+- **The fill-decay k** (how fast fill rate dies with distance from the mid) has a **public shadow** — no own fills needed for a first draft: a quote at depth d can only fill if aggressive flow *reaches* depth d, and that is visible on the public tape. Replay an hour: flow reached 1 tick 41×/hr, 2 ticks 17×, 3 ticks 6×, 5 ticks 1× — that curve's steepness is a day-zero k per asset. Bias warning: it's an *optimistic ceiling* (flow reaching your depth ≠ your fill — you'd be standing in a queue there, behind V_ahead, the wall in front); so discount it, lean pessimistic on fills (surprises arrive as gifts), and let own-fill depth-bucket measurements replace it bucket by bucket.
+
+The cold-start discipline in one line: **a learning system must be born with a safe opinion, not a blank one — and the safe opinion must not strangle the data supply that would replace it** (a seed so pessimistic that nothing ever fills can lock itself in forever).
 
 ##### Step 4 — Queue value: the reprice toll-gate
 
