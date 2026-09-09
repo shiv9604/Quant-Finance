@@ -1148,7 +1148,92 @@ Two desks, same feed, same fair value. Desk A re-quotes on every tick of FV nois
 
 ### Level 9 — Latency / Staleness
 
-*(Pending.)*
+**Status: ✅ Taught 2026-09-10.**
+
+*Symbol key (glossed at every use per the accessibility rule): **ms** = millisecond, a thousandth of a second (a human blink ≈ 100–150ms) · **FV** = fair value, my live estimate of true worth · **RTT** = round-trip time, the full there-and-back delay of a message · **p99** = the 99th percentile — line all measurements up best to worst; the value 99% of them beat: your bad-day-but-not-rare number · **δ** (delta) = the half-spread, my quote's distance from FV.*
+
+#### 1. What It Is
+
+Every prior level assumed that when the engine decides, the market hears it instantly. This level removes the fiction: **you never trade in the market's present — you trade in its recent past, and your orders land in its near future.** One question asked three ways: how old is my picture, how slow is my hand, and who profits from the gap? It owns the killer Level 6's forensics identified but couldn't fix — adverse markout concentrated at 100–500ms = *you were slow* — and no amount of widening cures slow.
+
+#### 2. Terminology essentials
+
+- **Latency** — the delay between "something happened" and "my response took effect" — a *chain* of delays (feed → decision → send → venue processing), each with its own clock. Tokyo co-located ≈ 10ms round trip; home wifi ≈ 80–200ms; Delta REST ≈ 750–1000ms.
+- **Tick-to-trade** — the full budget: exchange stamps the event → exchange stamps my resulting order. Itemized per link, because the slowest link caps the chain (a 1ms engine behind a 750ms venue API is a race car in a traffic jam).
+- **RTT vs one-way** — orders need the round trip (the acknowledgment coming back ends my flying-blind window about my own state); reactions need one-way each direction, and the directions aren't equal.
+- **Staleness** — quoting on an FV that no longer reflects reality. Latency is the cause, staleness the condition, the pick-off the consequence. Measured in *information*, not seconds: 5s old in a dead market = fresh; 50ms old after a leader-venue jump = lethal.
+- **Pick-off race** — leader jumps 3000.30→3001.10; my ask rests at 3000.60 on the follower. Two messages race: the arbitrageur's buy toward my stale quote, my cancel toward removing it. First processed wins the $0.50.
+- **Cancel latency** — the defensive critical path: slow placement costs opportunity; slow *cancel* costs money (the stale quote stays exposed).
+- **Jitter** — *plain words: how much the delay itself wobbles.* Treacherous because the wobble clusters at the worst moments — event bursts flood the venue, queues swell, your cancel crawls exactly when the race is live. Hence p99 (the bad-day number), never the average.
+- **Latency floor** — the venue-imposed minimum you cannot engineer away. Delta's 750–1000ms made sub-second-reaction strategies *impossible* there — a selection fact, not an engineering challenge.
+- **Pricing your slowness** — the residual exposure window (my p99 reaction vs the fast crowd's) has a computable expected cost per quote → it belongs in the spread floor next to adverse selection and inventory carry.
+- **Measure-first** — this program's own scar turned doctrine: "behavior bugs" that were latency in a strategy costume; every number above is real only once measured on your own path, distributions kept (median AND p99), re-measured on any change.
+
+#### 3. Why the Naive Approach Fails
+
+**The naive model:** "My code is fast, so I'm fast. Re-quote every X ms so quotes are never old."
+
+**Analogy — the bettor with the delayed TV.** He takes live football bets; his feed runs 3 seconds behind the stadium. Against customers watching the same delayed TV, his odds are fair — everyone's equally behind. But a few customers are *in the stadium, on the phone*: when a goal is scored they have 3 full seconds to bet at his stale odds — and they only call in those 3 seconds. His ledger shows the signature: ordinary bets net fine; a thin stream of bets, always placed moments before his own screen shows a goal, always loses. His options: faster feed (engineering); suspend odds whenever anything *might* have happened (the pull anti-pattern — he'd take no bets at all); **widen odds by exactly the expected cost of the 3-second window** (stay in business, priced); or — if this stadium's phone crowd is too big and the feed unfixable — stop covering *this stadium* (the venue decision).
+
+The naive desk fails both beliefs: "my code is fast" measures one link of a chain whose slowest link — often the venue itself — sets the total; and "re-quote every X ms" uses the calendar clock when staleness lives on the information clock, churning queue seats (Level 8's toll — the place in line sold for nothing) in calm while still losing the race in storms.
+
+#### 4. How It Works (Simple → Sophisticated)
+
+##### Step 1 — The budget audit
+
+Clock-stamp every link, keep distributions (median and p99 — the bad-day number):
+
+```
+exchange event ─► my feed ─► decision ─► send ─► venue processes
+  (t₀ stamp)      +2ms        +0.5ms     +4ms     +3.5ms        = 10ms tick-to-trade
+
+defensive path:  FV jump seen ─► cancel decided ─► cancel lands = my exposure window
+```
+
+Audit rules: the slowest link caps the chain (fix nothing else until the bottleneck moves); the p99 is the operative number (jitter clusters exactly when the race is live — a 10ms-median/300ms-p99 path IS a 300ms path on the days that decide the month); measure on your own path, always.
+
+##### Step 2 — The race, with numbers
+
+Leader jumps; my ask is stale on the follower. Symmetric speed → coin flip. Realistic asymmetry: his co-located feed beats my public stream by 15ms, my decision loop adds 5ms average wait, ordinary cancel path +10ms → his attack lands t+12ms, my cancel t+42ms: **a 30ms window where my $0.50 giveaway is guaranteed.** Expected cost per hour = (jumps big enough to cross my spread) × (average giveaway) × (P(my quote at risk)) — e.g. 6 jumps/hr × $0.40 ≈ $2.40/hr of latency tax, booked at 100–500ms markouts as "adverse selection" unless the markout is split by horizon. Level 6's rule: the horizon shape names the killer; widening cures the 5s-drift killer, only speed or priced slowness cures this one.
+
+##### Step 3 — Staleness on the information clock
+
+Two paths, by construction: the **slow path** — routine re-anchoring through the re-quote suppression band, protecting queue seats from noise; the **fast path** — a short list of tripwires (leader-venue jump past threshold, sweep on my own book, book-integrity failure) that bypass every smoothing filter and fire the cancel NOW. Order of operations is doctrine: **cancel first, think second** — the recompute takes longer than the cancel; sequencing them the other way donates the difference. The fast path's budget is Step 2's race; it justifies engineering the cancel into the fastest message the system sends.
+
+##### Step 4 — Price the slowness you can't remove
+
+After engineering, a residual window remains (my p99 vs the venue's fastest crowd). Two honest responses. **Charge for it**: the window's expected cost is a per-fill cost like any other → into the spread-floor decomposition next to adverse selection and inventory carry. A 40ms desk quotes structurally wider than a 5ms desk — arithmetic, not fear. Self-assessment metric: if the latency term dominates your floor, you are not a market maker at this venue — you are prey with a spreadsheet. **Respect the floor**: some windows are venue physics (Delta's 750–1000ms REST). The walk-away bar: hard floor + no workaround + research-backed impossibility diagnosis → leave the venue, not the business. Latency is a *selection* input — it decides which venues and which assets your speed class permits (Level 12 inherits this).
+
+Containment check: no leader venue, no fast crowd, calm tape, my p99 ≈ everyone's → the race has no runners, the latency term ≈ 0, staleness collapses to clock-age — the naive periodic re-quoter survives as the special case *nobody here is faster than me and nothing jumps*.
+
+#### 5. Why Should You Believe This? — The Premium vs the Fear
+
+Latency premium and fear-widening produce the same visible act (wider quotes) from opposite processes. The premium is **computed** — charged only for the measured exposure window, sized by jump frequency × giveaway × exposure probability, leaving P(fill) optimal *for your true speed class*; it narrows automatically as engineering shrinks the window. Fear-widening is **uncalibrated** — a tax on all flow including the tourists, killing P(fill) for protection you could have priced precisely. And the premium carries its own verdict: computed honestly, it sometimes reports that *no width works* — the floor is venue-imposed, unfixable, diagnosed — and the correct trade is to leave that venue. This program lived the full arc: mysterious "slippage bugs" → measure-first doctrine → Delta's 750–1000ms floor confirmed with the venue → pivot. The premium isn't theory here; it renamed the venue list.
+
+#### 6. Professional Standard (Jane Street / Citadel Level)
+
+- **Tick-to-trade itemized and alarmed** — every link stamped, median + p99 per link, regressions in the chain treated as production incidents.
+- **Cancel as the privileged message** — the defensive path engineered fastest, measured at p99, and joined against adverse fills (slow-cancel → bad-fill correlation watched continuously).
+- **Information-clock staleness** — quotes cancelled on world-movement (drift vs a skew-excluded anchor) and age both; fast-path tripwires bypass all smoothing; cancel-first-think-second.
+- **Slowness priced, not hidden** — the residual window's expected cost in the floor; the term's size tracked as a first-class business metric per venue.
+- **Latency as venue/asset selection** — speed class determines the tradeable universe; floors respected via measurement and diagnosis, not heroics.
+
+#### 7. Summary
+
+| | |
+|---|---|
+| **What it is** | The three clocks of slowness: the budget audit (chain, p99), the pick-off race (cancel vs attack), staleness on the information clock — and the residual window priced into the floor or, at venue floors, answered by leaving. |
+| **Why it matters** | The 100–500ms markout killer is unfixable by pricing — it silently books latency as "adverse selection" and misdirects every defense until the markout is split by horizon and joined against the latency tape. |
+| **Professional standard** | Itemized tick-to-trade, privileged cancel path, information-clock staleness with fast-path tripwires, computed latency premium, speed-class-aware venue selection. |
+
+#### Sees vs Misses
+
+| Approach | What it sees | What it misses |
+|---|---|---|
+| "My code is fast" | One link | The chain — feed, venue floor, jitter; the p99 hiding behind the median |
+| Calendar-clock re-quoting | Quote age | The information clock: churns seats in calm, still loses the race in storms |
+| + budget audit + fast-path cancel | The race, run properly | The residual window — unpriced slowness booked as adverse selection |
+| + latency premium + venue selection | Slowness charged or walked away from | Nothing structural — execution mechanics that preserve the seat while repricing → L10; venue/asset selection at depth → L12 |
 
 ---
 
