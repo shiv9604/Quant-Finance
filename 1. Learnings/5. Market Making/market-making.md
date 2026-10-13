@@ -1239,91 +1239,114 @@ Latency premium and fear-widening produce the same visible act (wider quotes) fr
 
 ### Level 10 — Execution Engineering
 
-#### Market Making Engine Architecture
+**Status: ✅ Taught 2026-10-14.** (Supersedes the interim "Market Making Engine Architecture" section — absorbed and deepened below.)
 
-*(Interim — moved from Foundation 2026-07-10; will be rewritten to full end-to-end depth when this level is taught.)*
+*Symbol key (glossed at every use per the accessibility rule): **ack** = acknowledgment, the exchange's "received and accepted" reply · **qty** = quantity, an order's size · **FV** = fair value, my live estimate of true worth · **q_pos** = my estimated place in the queue (0 = front, 1 = back) · **RTT** = round-trip time, a message's there-and-back delay.*
 
-A professional market making system is a coordinated set of modules that operate continuously. It is not simply placing bid and ask orders. The engine integrates market data, fair value estimation, inventory control, execution management, and risk safeguards.
+#### 1. What It Is
 
-**High-Level System Layers -**
-1. Market Data Layer.
-2. Fair Value Engine.
-3. Risk & Inventory Engine.
-4. Quote Engine.
-5. Execution & Order Manager.
-6. Safety & Kill-Switch Layer.
-7. Continuous feedback loop.
+Levels 3–9 produced decisions; Level 10 makes them **true at the exchange** — and keeps the engine's *beliefs* true while thousands of messages fly both ways with delays, losses and refusals. Thesis: **between your decision and the exchange's truth there is a gap of milliseconds and maybes — execution engineering is the discipline of never lying to yourself inside that gap.** Strategy bugs lose basis points; execution bugs lose positions. Nothing here is clever; all of it is load-bearing.
 
-**Market Data Layer -**
-1. Consumes order book updates, trades, funding data, and cross-venue prices.
-2. Requires low latency and accurate timestamping.
-3. Must process data without packet loss.
-4. Stale data leads to stale quotes.
-5. Input speed is more critical than model complexity.
+#### 2. Terminology essentials
 
-**Fair Value Engine -**
-1. Computes real-time fair value estimate.
-2. May include:
-   - Mid price.
-   - Microprice.
-   - Cross-venue weighting.
-   - Momentum adjustment.
-   - Basis and funding adjustment.
-3. Updates continuously per tick.
-4. Incorrect or slow fair value causes adverse selection.
+- **Order state machine** — every order in exactly one state, transitions only on evidence: `SENT → ACKED → (PARTIALLY_FILLED →)* FILLED | CANCELED | REJECTED`. *Plain words: a diagram of allowed situations and allowed moves between them, like a traffic light that can't jump green→red.* Most execution bugs are the engine believing one state while the venue holds another.
+- **In-flight window (flying blind)** — between send and ack the true state is UNKNOWABLE (the cancel may have landed, or the order filled a millisecond earlier). Level 9's RTT made operational. Cardinal sin: acting as if an in-flight request already succeeded.
+- **The exchange matching ruleset** (Q&A-derived, the user's own compact form): **sell limit = floor (same or higher is better); buy limit = ceiling (same or lower is better); orders at same-or-better prices are matched and executed immediately.** Expanded: (1) a limit price is a bound, not a wish; (2) every arriving order first tries to trade against the best opposite side — only an order that CANNOT trade gets to rest (you don't choose maker/taker; the book's state at arrival chooses); (3) the resting order sets the trade price (and earns maker fees); (4) big orders walk the book level by level (the sweep, seen from the engine's side); (5) within a price, first-come-first-served (Level 8's queue as law); (6) no crossed book, ever — overlap is resolved by trading, instantly.
+- **Post-only / GTX** — "maker or nothing": if the order would execute on arrival (= my price went stale in flight), the venue REJECTS it back instead of trading it. The reject is free staleness telemetry, not an error. The exchange is a vending machine, not a guardian — it executes written instructions wherever they overlap, knows nothing of my FV or intent; post-only is the one self-protection I can encode into the order itself. (TIF menu grounded: GTC = trade-then-rest · IOC = trade-now-cancel-rest · FOK = all-now-or-nothing · GTX = rest-only-or-reject. IOC and GTX are the two honest declarations — "here to take" vs "here to make" — the dangerous order is the plain one that declares nothing.)
+- **MODIFY (amend) vs cancel/replace** — one message editing in place (may keep the queue seat, venue-specific — qty-decrease usually keeps, price change usually forfeits) vs two messages (seat destroyed, rejoin at back, plus a window where neither order rests).
+- **Rate limits as budget** — venues cap message rates INCLUDING cancels; exhaustion converts a cost problem into a survival problem (unable to cancel when the Level 9 race starts). Allocation rule: the cancel reserve first, quoting spends the surplus.
+- **Partial fill** — 3 of 10 lots trade, 7 rest (keeping their seat). The 3 are a real fill: inventory moved (L7), booking due (L3), and the partial is itself a signal — someone ate part of the level.
+- **Reject taxonomy** — every reject class gets its own response; "retry immediately unchanged" converts one reject into a storm.
+- **Idempotency / client order IDs** — *plain words: idempotent = safe to do twice.* My own unique ID per order makes the unknowable window RECOVERABLE: query by ID, or re-send the same ID and let the venue refuse the duplicate.
+- **Reconciliation** — continuously diff believed state (orders, position, balances) against the venue's stated truth; the venue wins every disagreement. The mission line as machinery: trust nothing unverified against exchange truth.
+- **Churn ratio** — messages per fill: a health gauge (budget efficiency, queue seats burned) and a venue-relations metric.
 
-**Risk & Inventory Engine -**
-1. Monitors net exposure across venues.
-2. Applies risk aversion parameter (γ).
-3. Computes reservation price shift.
-4. Adjusts spread dynamically.
-5. Triggers hedge thresholds.
-6. Controls inventory drift.
+#### 3. Why the Naive Approach Fails
 
-**Quote Engine -**
-1. Calculates:
-   - Bid = Reservation price − Half-spread.
-   - Ask = Reservation price + Half-spread.
-2. Applies skew based on inventory.
-3. Adjusts size per risk limits.
-4. Handles venue-specific adjustments.
-5. Ensures quotes remain competitive yet risk-adjusted.
+**The naive model:** "Send the order; it's placed. Send the cancel; it's cancelled. Keep a boolean `order_is_open`."
 
-**Execution & Order Manager -**
-1. Places and cancels orders.
-2. Tracks fills and partial fills.
-3. Measures placement and cancel latency.
-4. Handles exchange errors and rejections.
-5. Detects desynchronization.
-6. Cancel speed is critical for minimizing stale quote risk.
+**Analogy — the Mars rover.** A 10-minute signal delay teaches every instinct this level needs. You command, then *wait for telemetry* — sending "turn right" assuming the drive completed puts the rover in a ditch (= never act on an assumed ack). Never re-send blindly: the lost message might have been the command OR the reply; re-send and the rover drives double into the crater — so every command carries a serial number the rover executes once, ever (= client-ID idempotency). The radio has a power budget; burn it on chatty corrections and you can't send "STOP" at the cliff (= the cancel reserve). And periodically the rover photographs its own position to re-ground your map — not because you erred, but because drift is inevitable and an operator on a wrong map crashes with full confidence (= reconciliation). Mantra: **the map is not the territory — the job is keeping the map honest.**
 
-**Cancel Latency Risk -**
-1. If cancel speed is slow, stale quotes remain exposed.
-2. Price may move before cancellation completes.
-3. Stale fills create adverse selection.
-4. Increased adverse selection raises expected loss per fill.
-5. Higher cancel latency requires wider spreads.
+The boolean fails because it cannot represent *"I don't know yet"* — the single most common true state in a fast system. Every execution disaster is at root a state lie: believing CANCELED while the venue holds the order live (quoting a ghost that can still fill), or believing ACKED while rejected (you think you're quoted; you're absent and blind).
 
-**Infrastructure Principle -**
-1. Quote aggressiveness must match infrastructure quality.
-2. Faster data and cancel speed allow tighter spreads.
-3. Slower systems must charge higher risk premium.
-4. Infrastructure advantage directly improves expected value.
-5. Competitive survival depends on execution efficiency.
+#### 4. How It Works (Simple → Sophisticated)
 
-**Safety & Kill-Switch Layer -**
-1. Enforces maximum inventory limits.
-2. Enforces maximum loss limits.
-3. Detects volatility spikes.
-4. Detects exchange disconnections.
-5. Stops quoting when risk becomes unpriceable.
+##### Step 1 — The state machine as the single source of local truth
 
-**Core Insight -**
-1. Market making is a systems engineering problem.
-2. Data speed, cancel speed, and pricing logic are interconnected.
-3. Latency disadvantages increase adverse selection.
-4. Spread must reflect infrastructure capability.
-5. Engine design determines survivability in competitive markets.
+```
+          ┌────────── REJECTED (venue said no)
+SENT ──► ACKED ──► PARTIALLY_FILLED ──► FILLED
+ │          │             │
+ │          └──► CANCEL_SENT ──► CANCELED
+ └ (in-flight: true state UNKNOWN — the only honest label)
+```
+
+Transitions happen only on venue evidence, never on hope; every transition is auditable ("what message moved this order here?"). Ignorance is explicit — that is the design's whole gift.
+
+##### Step 2 — The in-flight discipline
+
+1. **Never act on an assumed outcome.** The classic kill: cancel sent → replacement placed immediately → the cancel FAILS (a fill beat it mid-flight) → both orders live → double exposure at exactly the moment the market moves (that's WHY you were repricing). Disciplined sequence: cancel → wait for the cancel's outcome → then place. Costs half an RTT of patience.
+2. **Timeout silence = ambiguity, not failure.** Recovery decision tree (by client ID): venue says LIVE → my cancel was lost en route → re-send it (a second cancel of a dead order is harmlessly refused); CANCELED → only the reply was lost → done; FILLED → the cancel lost the race → the fill is MINE: book it, update inventory, THEN decide the next quote at the new position. Never: place the replacement before resolving, or "retry" under a fresh ID (the doubling bug in a retry costume). Refinement from practice: treat the venue's "duplicate order — already accepted" rejection as SUCCESS — a duplicate-rejection is a confirmation.
+3. **Partials mutate state mid-flight.** The cancel that lands after a 3-of-10 fill cancels the remaining 7; the 3 are real. Partial-aware accounting is routine, not an edge case.
+
+##### Step 3 — MODIFY vs cancel/replace: the decision is economic, and gated by WHY
+
+| | Cancel/replace | MODIFY |
+|---|---|---|
+| Messages | 2 | 1 |
+| Queue seat (L8's asset) | destroyed — rejoin at back | kept on qty-decrease (venue rules) |
+| Gap where nothing rests | yes | no |
+
+MODIFY looks strictly better — until the **defensive gate** (this program's −$1.5 → −$59 ETH scar; +$5.24 mean across seeds after the fix): when the reprice trigger is *defensive* — hostile momentum (price trending INTO my quote), toxicity, the Level 9 race — MODIFY's virtue is the crime: it **keeps the seat, and the seat is in the burning theater**. Front of the queue is first to be eaten by the informed wave. Rule: *optimization reprice → MODIFY (keep the seat); defensive reprice → hard cancel (abandon the seat on purpose; cancel first, think second).* Sibling scar: amend-in-place must inherit the original order's age — a MODIFY path that resets the staleness clock lets orders age half an hour on-venue while looking fresh locally.
+
+##### Step 4 — The rate budget and the reject taxonomy
+
+Allocation like capital: **the engine must always retain budget to cancel everything it has resting** (defensive capacity reserved first — institutionally: a reserved top band of the budget that maker placements may never consume, where cancels and risk-reducing exits ALWAYS flow); quoting spends the surplus; churn ratio is the live gauge of how much each message buys.
+
+| Reject | Means | Response |
+|---|---|---|
+| GTX/post-only cross | price stale in flight (free telemetry) | re-price off fresh FV, re-send once; a STORM = market faster than my loop → step back, wider/deeper, let FV settle — never machine-gun |
+| Filter violation (lot/notional/price) | order SHAPE illegal — deterministic | never retry unchanged; fix composition (ALL filters: LOT ∩ NOTIONAL ∩ PRICE — the 33-silent-rejects scar) |
+| Insufficient margin | risk state desynced from venue | stop quoting up; reconcile balances first — map-vs-territory alarm |
+| Rate-limit | the budget itself exhausted | hard backoff; cancels-only mode until headroom returns |
+
+Unifying rule: **a reject is the venue telling you which of your beliefs is wrong.** Classify, correct the belief, then act.
+
+##### Step 5 — Reconciliation: the outer truth-loop
+
+Periodically and at every boundary (session start/end, any disconnect): fetch the venue's full truth — open orders, position, balances — and diff against local state. Three disciplines: the venue wins every disagreement (adjust the map, never argue with the territory); every diff is an incident to explain, not a number to patch (the same bug drifts you again tomorrow); stream truth is fast truth, snapshot truth is court truth (streams drop frames — the slow full snapshot periodically re-grounds everything; Level 2's book-resync pattern generalized to all state).
+
+Containment check: slow venue, one order at a time, infinite budget, reliable network → every ack returns before the next decision, no ambiguity, no drift — the naive boolean survives as the special case *nothing is ever in flight*. True of a human clicking in a UI; false of an engine by its second millisecond.
+
+#### 5. Why Should You Believe This? — The Compound Kill-Chain
+
+Each discipline looks pedantic alone; the believer's scenario is how they fail *together*. A desk with no cancel reserve churns happily in calm (high messages-per-fill, budget draining). The storm arrives: FV jumps, the Level 9 race starts on every resting quote at once. The desk fires cancels — rate-limited: the budget went to churn. Stale quotes stay exposed; fills land on them (back-of-queue sweep fills, Level 8's worst class); the desk, flying blind mid-storm (acks delayed — Level 9's jitter clusters exactly now), re-sends under fresh IDs "to be safe" and doubles two positions. Mark-to-market now says large and wrong; the local map says modest and fine; without reconciliation the desk *keeps quoting off the wrong map with full confidence*. Every link in that chain is one of this level's rules, and every link has an incident number in this program's history — the duplicate-place guard, the MODIFY gate, the filter-composition scar, the reconcile race — each now a mechanism because it was once a loss.
+
+#### 6. Professional Standard (Jane Street / Citadel Level)
+
+- **Evidence-only state transitions** — a formal order state machine; "unknown" a first-class state; every transition auditable to its venue message.
+- **Idempotent everything** — client IDs on every message; timeout recovery by query-or-same-ID-resend; duplicate-rejections classified as confirmations.
+- **Inverted-priority rate budgeting** — a reserved cancel band maker placements may never consume; risk-reducing messages always flow; weight/headroom tracked as a live gauge with throttle tiers engaging BEFORE the venue refuses.
+- **Reprice instructions gated by trigger intent** — amend for optimization, hard-cancel for defense; amend inherits the order's true age.
+- **Reject taxonomy with per-class playbooks** — soft vs hard venue codes enumerated; deterministic rejects never retried unchanged; storm detection wired to backoff, not just counted.
+- **Reconciliation as a subsystem** — per-symbol truth loops against venue statements; the checker gets checked; truth-resolution overrides local belief before any close fires.
+
+#### 7. Summary
+
+| | |
+|---|---|
+| **What it is** | The machinery that makes decisions true at the exchange and keeps local beliefs honest: state machine, in-flight discipline, idempotent IDs, the MODIFY gate, cancel-reserve budgeting, reject taxonomy, reconciliation. |
+| **Why it matters** | Strategy bugs lose basis points; execution bugs lose positions — and they compound: churn spends the budget, the storm demands it, blindness doubles the exposure, a wrong map hides it. |
+| **Professional standard** | Evidence-only states, idempotent recovery, inverted-priority budgets, intent-gated repricing, per-class reject playbooks, venue-truth reconciliation. |
+
+#### Sees vs Misses
+
+| Approach | What it sees | What it misses |
+|---|---|---|
+| Boolean order tracking | The happy path | "I don't know yet" — the most common true state; every state lie that follows |
+| + state machine + idempotent IDs | Honest ignorance; safe timeout recovery | The budget: churn silently spending the cancel reserve the storm will demand |
+| + cancel-reserve + reject taxonomy | Survival capacity under storm; beliefs corrected per reject class | The outer drift: missed acks and dropped frames accumulating into a wrong map |
+| + reconciliation | The full honest loop — map audited against territory continuously | Nothing structural — what fills do to the position after the fact → L11; venue-class differences → L12 |
 
 ---
 
