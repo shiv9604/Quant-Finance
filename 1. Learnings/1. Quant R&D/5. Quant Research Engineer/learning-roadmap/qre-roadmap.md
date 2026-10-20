@@ -27,7 +27,7 @@ engineering, career) and cross-links into MM levels — never duplicates them.
 
 | Tier | Level | Topic | Hireability bar unlocked | Status |
 |---|---|---|---|---|
-| Foundation | 0 | How a MM desk works — the research → production loop | — | ⬜ |
+| Foundation | 0 | How a MM desk works — the research → production loop | — | ✅ 2026-10-21 |
 | Foundation | 1 | P&L attribution & markouts | Junior | ⬜ |
 | Foundation | 2 | Probability & statistics for noisy outcomes | Junior | ⬜ |
 | Foundation | 3 | Experiment design & hypothesis testing | Junior | ⬜ |

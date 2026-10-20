@@ -35,6 +35,11 @@ never duplicate.
 - Non-quant accessibility rule: every symbol glossed every time; every math word explained.
 - Learner style: repetition across contexts with new concrete numbers each time; concise.
 
-## 4. Next Step
+## 4. Next Step (updated 2026-10-21)
 
-Level 0 — How a MM Desk Works, Step 1 terminology check.
+Level 0 ✅ DONE (all 8 steps). Delivery-workflow gaps WG0.1–WG0.8 PO-confirmed and on
+KCMME `fugu-dev` (`6adfb9c2f`, `docs/architecture/gaps/delivery-workflow-gaps.md`);
+Appendix C = paste-ready Workflow-architect brief (PO to start a role-4 session).
+NEXT: Level 1 — P&L Attribution & Markouts. Before teaching, run the Step 7.9 adoption
+check on WG0.x (merged? used by the next feature?). Then Step 1 terminology check.
+Note: trading repo push still blocked by GitHub LFS budget — commits are local-only.
