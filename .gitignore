@@ -8,3 +8,7 @@ Projects/*/data/
 # OS
 .DS_Store
 Thumbs.db
+# LFS bandwidth control (2026-10-20): regenerable backtest outputs + raw data dumps stay on disk, out of git
+3. Projects/1. portfolio-simulation/**/*.xlsx
+3. Projects/2. KCIM/backtests/*.xlsx
+3. Projects/3. Cryptp Options/data/
