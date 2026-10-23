@@ -53,6 +53,17 @@ course exists to fix.
 
 ---
 
+## Current-Engine Rule (added 2026-10-24, PO directive)
+
+The live engine is the **strip-down `spine` branch** (worktree `~/dev/kcmme-spine`; sibling
+`spine-ab-formula`), cut from `fugu-dev`: `src/strategy/spine.cpp` (~300-line strategy),
+`docs/architecture/spine-parameters.md`, plan `docs/architecture/simple-robust-mm-engine-plan-20261020.md`.
+- **Step 4 (KCMME exercise) and engine gaps** read the `spine` branch first — that is what
+  runs now. Older `fugu-dev` code is history: cite it only to show where a gap came from.
+- **Step 7 (workflow cross-check)** uses BOTH: feature history (M0–M10 on `fugu-dev`) for
+  counterfactuals, and how the spine work is being delivered now for live gaps.
+- Read `spine` with `git -C ~/dev/kcmme-spine` or `git show spine:<path>`; never edit it.
+
 ## Separation Rule (extends the MM one)
 
 | File | Contains | Never contains |

@@ -41,7 +41,8 @@ Level 0 ✅, Level 1 ✅ (all 8 steps). Gaps on KCMME `fugu-dev`: delivery WG0.1
 WG1.1–WG1.3 (`docs/architecture/gaps/delivery-workflow-gaps.md`, briefs = Appendix C + D),
 engine QRE-L1-G1/G2 (`engine-gaps.md`). Adoption check 2026-10-23: WG0.x not yet picked up
 by a Workflow-architect session.
-NEXT: Level 2 — Probability & Statistics for Noisy Outcomes. Before teaching: Step 7.9
+Current engine = `spine` branch (`~/dev/kcmme-spine`) — see template Current-Engine Rule.
+NEXT: Level 2 — Probability & Statistics for Noisy Outcomes (Step 1 terms sent 2026-10-24, awaiting clear/not-clear). Before teaching: Step 7.9
 adoption check on WG0.x/WG1.x. Then Step 1 terminology check.
 Learner style notes (Level 1): guide spreadsheet work ONE small step per message, wait for
 "Done"; give algebra first, then the Excel mapping; never pre-compute the learner's answers;
