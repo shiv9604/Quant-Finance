@@ -35,11 +35,16 @@ never duplicate.
 - Non-quant accessibility rule: every symbol glossed every time; every math word explained.
 - Learner style: repetition across contexts with new concrete numbers each time; concise.
 
-## 4. Next Step (updated 2026-10-21)
+## 4. Next Step (updated 2026-10-23)
 
-Level 0 ✅ DONE (all 8 steps). Delivery-workflow gaps WG0.1–WG0.8 PO-confirmed and on
-KCMME `fugu-dev` (`6adfb9c2f`, `docs/architecture/gaps/delivery-workflow-gaps.md`);
-Appendix C = paste-ready Workflow-architect brief (PO to start a role-4 session).
-NEXT: Level 1 — P&L Attribution & Markouts. Before teaching, run the Step 7.9 adoption
-check on WG0.x (merged? used by the next feature?). Then Step 1 terminology check.
-Note: trading repo push still blocked by GitHub LFS budget — commits are local-only.
+Level 0 ✅. Level 1 (P&L Attribution & Markouts): Steps 1–3 DONE (14 terms clear; teaching
+confirmed). NOW: Step 4 hands-on, guided step by step (wait for "Done" between steps).
+Exercise folder: `~/Desktop/trading/2. Practice/3. QRE Exercises/level-1-attribution/`
+(SOL session 7 Oct 2026 06:44–07:00; 73 engine fills). Part A steps 1–4 done (learner
+built per-fill spread / adverse-5s / fee / total columns M–P, chose mid column J = (bid+ask)/2
+— column K equals the fill price on buys). NEXT: Part A Step 5 — SUM totals (row 76) +
+SUMIF maker/taker split (rows 77–78) + COUNTIF takers; learner reports + reads biggest bar.
+Then Part B (vs `sol_engine_computed.csv` — expect engine spread≈0 on buys from K),
+Part C (vs exchange `sol_exchange_truth.xlsx` User Trades), Steps 5–8.
+Learner computes all answers — Claude does NOT pre-compute totals (PO rejected it 2026-10-21).
+Sign convention: + = earned, − = lost; say "net result".
