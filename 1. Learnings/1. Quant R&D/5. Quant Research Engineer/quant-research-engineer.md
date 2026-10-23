@@ -22,6 +22,13 @@ Old (A) and new (B) run at the same time in the same market — interleaved time
 symbol split, or size split — so the market cancels out and only the change remains.
 Before-vs-after cannot separate your change from the market's change.
 
+### The P&L waterfall (Level 1)
+Every fill's result splits into bars that add up exactly: spread capture s×(m₀−p)×q,
+adverse selection s×(m_H−m₀)×q, inventory MTM s×(m_T−m_H)×q, minus fees (s = +1 buy / −1
+sell, p = fill price, q = qty, m₀ = mid at fill, m_H = mid H later, m_T = mid at end).
++ = earned, − = lost. Markouts at several horizons show *what kind* of adverse selection.
+Reconcile to the exchange before trusting any bar.
+
 ## Levels 0–19 — Full Depth
 
 > One section per roadmap level (`learning-roadmap/qre-roadmap.md`), in order, each
@@ -219,7 +226,174 @@ Ask of any AI plan or result:
 
 
 ### Level 1 — P&L Attribution & Markouts
-*(Pending)*
+
+**Status: ✅ Taught 2026-10-23.**
+
+#### 1. What It Is
+P&L attribution splits a trading result into its causes — bars that add up exactly to the
+total. A market maker's core bars: **spread capture** (traded better than fair at the instant
+of the fill), **adverse selection** (the price moved against you right after — the other side
+knew more), **inventory MTM** (ordinary drift while you keep holding), **fees**. Markouts —
+the price move at fixed horizons after a fill — measure adverse selection. Without
+attribution, "we lost money" cannot be traced to a cause, so no fix (human or AI) can be judged.
+Sign convention: **+ = earned, − = lost.**
+
+#### 2. Simple Example
+Two days, both −$50:
+
+| | Day A | Day B |
+|---|---|---|
+| Spread captured | +$400 | +$200 |
+| Adverse selection | −$380 | −$50 |
+| Inventory MTM | −$40 | −$170 |
+| Fees | −$30 | −$30 |
+| **Net result** | **−$50** | **−$50** |
+
+Day A: picked off → widen/skew on informed flow. Day B: held inventory too long → unload or
+hedge faster. Same total, opposite fixes; widening on Day B cuts the +$200 spread and makes it worse.
+
+#### 3. Why the Naive Approach Fails
+Looking only at the total (the restaurant owner who sees −$2,000 and raises prices when the
+real cause was food waste) tells you *that* you lost, not *why*, so you fix the wrong thing.
+Profit-per-round-trip is next most common and still mixes spread with price move, ignores open
+inventory, and can't tell an instant loss (sniped) from a slow one (drift).
+
+#### 4. How It Works (Simple → Sophisticated)
+
+**Layer 1 — total P&L = realised + unrealised (mark-to-market).** Unrealised counts open
+positions at the current mid; without it you can look profitable by never closing losers.
+*Still misses:* why.
+
+**Layer 2 — profit per round trip.** *Still misses:* spread vs move; open inventory; instant vs slow.
+
+**Layer 3 — the per-fill waterfall.** Symbols: **s** = your side (+1 bought, −1 sold) · **p** =
+your fill price · **q** = quantity · **m₀** = mid at the fill, (best bid + best ask) ÷ 2 ·
+**m_H** = mid a fixed time H later · **m_T** = mid at the end / at close.
+
+```
+spread capture    = s × (m₀  − p)   × q     how much better than fair you traded
+adverse selection = s × (m_H − m₀)  × q     price move against/for you right after
+inventory MTM     = s × (m_T − m_H) × q     drift while you kept holding
+fee bar           = − fee                   fees are always money lost
+─────────────────────────────────────────
+net result        = s × (m_T − p) × q − fee
+```
+
+- **Why × s:** "good" is opposite for buyers (pay less than fair; want the price to rise after)
+  and sellers (receive more than fair; want it to fall). s = −1 flips a seller's numbers so every
+  bar reads + = good for me, − = bad for me. Without it a good sell (sold at $102, mid $100:
+  100 − 102 = −2) shows as a loss.
+- **Why × q:** (m₀ − p) is per coin; × q turns it into dollars for the size traded.
+- **Why − fee:** fees are recorded as an amount paid (positive); for you it's a loss.
+- **Why the bars add up exactly:** each bar starts where the previous stops (fill price → mid at
+  fill → mid at H → mid at end), so the middle prices cancel. Adding signed bars *is* how costs
+  get subtracted. **Classic error:** measuring adverse from the fill price instead of the mid —
+  it then contains the spread, and spread + adverse counts the spread twice (or, if spread is
+  computed against the fill price, spread reads 0 and all of it lands in "adverse").
+- **Worked buy:** bought 1 at p $149.98, m₀ $150.00, m_H $149.94, m_T $149.80 → spread +$0.02,
+  adverse −$0.06, inventory −$0.14, total −$0.18 = 149.80 − 149.98 ✓.
+- **Worked sell:** sold 1 at $150.02, m₀ $150.00, m_H $150.05 → spread +$0.02 (sold above fair),
+  adverse −$0.05 (price rose after selling).
+- **Sanity check:** price never moves → only spread capture remains. ✓
+
+*Still misses:* everything depends on the horizon H — too short mislabels slow informed moves
+as inventory; too long blames ordinary drift on adverse selection.
+
+**Layer 4 — the markout curve (several horizons).** Average markout per fill at
+100 ms / 1 s / 5 s / 60 s; the shape names the cause:
+
+| Curve | 100 ms | 1 s | 5 s | 60 s | Means | Fix direction |
+|---|---|---|---|---|---|---|
+| A | −0.05 | −0.06 | −0.06 | −0.06 | **sniped** — faster traders hit stale quotes | speed: cancel/reprice faster |
+| B | −0.01 | −0.03 | −0.06 | −0.07 | **informed flow** | widen/skew on flow signals |
+| C | −0.03 | −0.02 | 0.00 | +0.01 | temporary pressure that **reverts** | fine; maybe exiting too early |
+| D | ~0 | ~0 | ~0 | ~0 | **benign** flow | quote tighter here |
+
+Choose H for the waterfall where the curve flattens. Compare across assets in **bps**
+(1 bp = 0.01% of price): $0.02 on $150 = 1.33 bps. *Still misses:* tails and which asset/venue.
+
+**Layer 5 — slicing and tails.** Averages hide tails: 950 fills at +$0.005 and 50 at −$0.295
+average −$0.01 ("mild") while 5% of fills do all the damage — the fix is avoiding those 50, not
+widening everywhere. Look at the **distribution**: median (middle value), percentiles (e.g. the
+5th percentile — only 5% of fills are worse). Slice by **maker vs taker**, asset, venue, hour:
+a session −$50 can be BTC +$30 and DOGE −$80; a near-zero total can be makers +$0.29 vs takers
+−$0.30. *Still misses:* whether the input numbers are true.
+
+**Layer 6 — reconcile with exchange truth.** The waterfall is only as good as its fills.
+Reconcile daily against the exchange: fill count (maker/taker), commission, realized P&L,
+position. Add an **unexplained** bar:
+`spread + adverse + inventory − fees + unexplained = exchange-reported change`.
+If unexplained ≉ 0, fix the data before trusting any other bar. A log that silently drops
+taker exits — the most expensive fills — makes the whole picture too kind.
+
+#### 5. Why Should You Believe This?
+Without attribution, two −$50 days → "widen spreads" → on Day B spread capture falls
++$200 → ~+$120 while the inventory bleed (−$170) stays → ~−$130, and the next step is "widening
+didn't help, try something else" — a random walk through changes. With attribution each fix is
+aimed at one named bar, and tomorrow's waterfall says whether that bar moved. This is the
+Level 0 link: a hypothesis says *which bar moves by how much*; the waterfall checks it.
+
+#### 6. Professional Standard
+Per-fill waterfall + multi-horizon markouts in bps against a fair-price reference (mid or
+microprice); morning review sliced by asset/venue/hour/fill type with tail statistics;
+reconciled to exchange/clearing daily with unexplained ≈ 0; an independent recompute of the
+bars (labels, not just sums); changes judged by which bar moved vs the predicted bar.
+
+#### 7. Summary + Sees vs Misses
+
+| | |
+|---|---|
+| **What it is** | Splitting P&L into spread, adverse selection, inventory MTM and fees that add up exactly |
+| **Why it matters** | Different bars → different fixes; the total alone sends you to the wrong fix |
+| **Professional standard** | Reconciled, multi-horizon, sliced, independently recomputed attribution every day |
+
+| Method | Sees | Misses |
+|---|---|---|
+| Total P&L | whether you made money | why |
+| Per round trip | average trade quality | spread vs move; inventory; instant vs slow |
+| Waterfall (one H) | spread / adverse / inventory / fees, exact sum | mislabels if H badly chosen |
+| Markout curve | kind of adverse selection | tails; which asset/venue |
+| Slicing + distributions | where it bleeds; few-fills tails | whether the data is true |
+| + reconciliation | every bar is real (unexplained ≈ 0) | — (the standard) |
+
+#### 8. Industry Practice — How a Desk Does This Manually
+- **Owners:** Quant Developers build and own the attribution pipeline and reconciliation;
+  Quant Traders read it every morning; researchers use markouts to build and test signals;
+  operations/finance own reconciliation with the clearing/exchange statement.
+- **Rituals:** daily morning P&L attribution review; daily reconciliation break report (any
+  unexplained difference is chased the same day); markout review per strategy change.
+- **Tooling:** tick/fill stores (kdb+/q, ClickHouse, parquet), Python/pandas notebooks,
+  dashboards (Grafana/internal), the exchange/clearing statement as the reconciliation source.
+
+#### 9. Job-Readiness by Seniority
+
+| Bar | Can do | Day-one contribution |
+|---|---|---|
+| **Junior** | compute the waterfall per fill with correct signs; split maker/taker; read which bar dominates | rebuild yesterday's attribution from raw fills and match the dashboard |
+| **Mid** | own the pipeline: multi-horizon markouts, slicing, daily reconciliation, catch definition bugs | find why the dashboard and the exchange disagree, fix the definition |
+| **Senior** | judge strategy changes from it; set the canonical definitions; decide H per strategy | reject a "−40% adverse selection" claim that only moved cost between bars |
+
+#### 10. Interview Drill
+- **Concept:** "+$10k gross, −$3k net — how do you find out why?" — *Junior:* break into bars,
+  split maker/taker. *Mid:* $13k sits between gross and net → costs; reconcile first (is the
+  +$10k real?), fees by maker/taker and tier, slice asset/venue/hour. *Senior:* "gross positive
+  means the edge works — this is a cost problem, not a strategy problem."
+- **Numeric:** bought 2 at $99.95, m₀ $100.00, m_1s $99.90, fee $0.04 → spread +$0.10,
+  adverse **−$0.20** (sign!), net **−$0.14** (fee always comes off); bad fill — picked off within a second.
+- **Scenario:** "AI: new feature cut adverse selection 40%, recommend default-ON." Check:
+  (1) fills reconciled to the exchange; (2) recompute the bars — adverse measured from the mid or
+  from the fill price?; (3) other bars and net — widening often cuts adverse *and* fills/spread,
+  moving cost between bars; (4) Level 0: concurrent A/B, sample, predicted number, kill rule.
+
+#### 11. LLM-Judgment Checklist
+1. Were the fills reconciled to the exchange (count, maker/taker, commission, realized P&L)? Is unexplained ≈ 0?
+2. Is adverse selection measured from the **mid at fill** — or from the fill price (which swallows the spread)?
+3. Does a bar read exactly 0? Suspect a definition artifact before believing it.
+4. Is there a maker/taker split and per-asset breakdown, or only a total/average?
+5. Which markout horizons? One short horizon can't rule out informed flow.
+6. Are assets compared in bps / per fill, or in raw dollars?
+7. Does the proposed fix target the bar that actually dominates — and what does it do to the other bars and the net?
+
 
 ### Level 2 — Probability & Statistics for Noisy Outcomes
 *(Pending)*

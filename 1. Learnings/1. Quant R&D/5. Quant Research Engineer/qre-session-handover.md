@@ -37,14 +37,12 @@ never duplicate.
 
 ## 4. Next Step (updated 2026-10-23)
 
-Level 0 ✅. Level 1 (P&L Attribution & Markouts): Steps 1–3 DONE (14 terms clear; teaching
-confirmed). NOW: Step 4 hands-on, guided step by step (wait for "Done" between steps).
-Exercise folder: `~/Desktop/trading/2. Practice/3. QRE Exercises/level-1-attribution/`
-(SOL session 7 Oct 2026 06:44–07:00; 73 engine fills). Part A steps 1–4 done (learner
-built per-fill spread / adverse-5s / fee / total columns M–P, chose mid column J = (bid+ask)/2
-— column K equals the fill price on buys). NEXT: Part A Step 5 — SUM totals (row 76) +
-SUMIF maker/taker split (rows 77–78) + COUNTIF takers; learner reports + reads biggest bar.
-Then Part B (vs `sol_engine_computed.csv` — expect engine spread≈0 on buys from K),
-Part C (vs exchange `sol_exchange_truth.xlsx` User Trades), Steps 5–8.
-Learner computes all answers — Claude does NOT pre-compute totals (PO rejected it 2026-10-21).
-Sign convention: + = earned, − = lost; say "net result".
+Level 0 ✅, Level 1 ✅ (all 8 steps). Gaps on KCMME `fugu-dev`: delivery WG0.1–WG0.8 +
+WG1.1–WG1.3 (`docs/architecture/gaps/delivery-workflow-gaps.md`, briefs = Appendix C + D),
+engine QRE-L1-G1/G2 (`engine-gaps.md`). Adoption check 2026-10-23: WG0.x not yet picked up
+by a Workflow-architect session.
+NEXT: Level 2 — Probability & Statistics for Noisy Outcomes. Before teaching: Step 7.9
+adoption check on WG0.x/WG1.x. Then Step 1 terminology check.
+Learner style notes (Level 1): guide spreadsheet work ONE small step per message, wait for
+"Done"; give algebra first, then the Excel mapping; never pre-compute the learner's answers;
+learner works in Excel (save as .xlsx, not .csv). Sign convention + = earned, − = lost.

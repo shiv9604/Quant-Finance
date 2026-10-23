@@ -33,3 +33,22 @@ Entry format:
   T — Audit a shipped feature against how professional desks take ideas to production.
   A — Mapped M8 onto the research → review → reproduction → A/B → scale-or-kill loop; found direction-only predictions, no kill rule, sequential A/B.
   R — Showed a 2.75× cost result had been caveated instead of judged; filed 8 process gaps incl. a mandatory research note with predicted effect + kill criteria.
+
+### Level 1 — P&L attribution: rebuilding and reconciling a live session
+- **What I did** (hands-on, on KCMME): rebuilt the per-fill P&L waterfall (spread capture,
+  5 s adverse selection, fees) for a real 16-minute SOLUSDC mainnet session (73 engine fills)
+  in a spreadsheet; split maker vs taker; compared my numbers with the engine's own
+  attribution; reconciled both against the Binance trade export.
+- **Result**: engine-log view −$0.017 (makers +$0.288, takers −$0.304 — one taker fill wiped
+  ~4 maker fills); found the engine measures adverse selection from the fill price, so its
+  spread bar reads ≈ 0 and the spread is misreported as adverse selection (would have steered
+  toward "widen quotes" instead of "cut taker exits"); found the fill log missed 39 of 112
+  exchange trades (36 takers) — the real net was −$0.688, ~40× worse. Filed engine gaps
+  QRE-L1-G1/G2 and delivery gaps WG1.1–WG1.3 (KCMME fugu-dev `47e0d181c`).
+- **What it proves**: Junior bar on attribution mechanics; Mid-level instinct on
+  reconciliation and catching a definition bug by independent recomputation.
+- **Interview story** (STAR):
+  S — My engine reported a near-break-even session.
+  T — Verify where the money really went.
+  A — Rebuilt the waterfall by hand from raw fills, compared bar-by-bar with the engine, reconciled to the exchange export.
+  R — Found a labelling bug (spread counted as adverse selection) and a log missing 36 taker exits; true loss 40× the engine's figure; root cause = taker exits, not quote width.
