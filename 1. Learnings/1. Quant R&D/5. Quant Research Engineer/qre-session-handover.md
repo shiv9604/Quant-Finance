@@ -42,8 +42,8 @@ WG1.1–WG1.3 (`docs/architecture/gaps/delivery-workflow-gaps.md`, briefs = Appe
 engine QRE-L1-G1/G2 (`engine-gaps.md`). Adoption check 2026-10-23: WG0.x not yet picked up
 by a Workflow-architect session.
 Current engine = `spine` branch (`~/dev/kcmme-spine`) — see template Current-Engine Rule.
-NEXT: Level 2 — Probability & Statistics for Noisy Outcomes (Step 1 terms sent 2026-10-24, awaiting clear/not-clear). Before teaching: Step 7.9
+Level 2: Steps 1–2 done (terms + teaching); one-page summary given 2026-10-28; awaiting Step 3 confirmation → Step 4 = judge the spine's 20-fill adverse estimate (SE, √n). Before teaching: Step 7.9
 adoption check on WG0.x/WG1.x. Then Step 1 terminology check.
 Learner style notes (Level 1): guide spreadsheet work ONE small step per message, wait for
 "Done"; give algebra first, then the Excel mapping; never pre-compute the learner's answers;
-learner works in Excel (save as .xlsx, not .csv). Sign convention + = earned, − = lost.
+learner works in Excel (save as .xlsx, not .csv). NEVER use LaTeX ($$…$$, \frac) — the terminal shows it raw; write formulas as plain text (SE = σ ÷ √n) in code blocks. Sign convention + = earned, − = lost.

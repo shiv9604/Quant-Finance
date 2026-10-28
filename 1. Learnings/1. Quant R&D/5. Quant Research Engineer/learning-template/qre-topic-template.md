@@ -53,6 +53,12 @@ course exists to fix.
 
 ---
 
+## Plain-Text Formula Rule (HARD — added 2026-10-28, PO)
+
+The learner reads in a terminal: NEVER write LaTeX (`$$…$$`, `\frac`, `\sqrt`, `\text`). Write
+formulas as plain text in code blocks (`SE = σ ÷ √n`), then the same formula in words, then a
+worked number.
+
 ## Current-Engine Rule (added 2026-10-24, PO directive)
 
 The live engine is the **strip-down `spine` branch** (worktree `~/dev/kcmme-spine`; sibling
