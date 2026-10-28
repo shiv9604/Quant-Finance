@@ -24,7 +24,13 @@ as the same skill, able to judge every AI-written plan and result on KCMME.
 Step 1 — Terminology check        (unchanged from MM template)
 Step 2 — Teaching                 (unchanged; Teaching Flow Rules apply)
 Step 3 — Understanding check      (unchanged; explicit "is this clear?")
-Step 4 — Hands-on KCMME exercise  THE LEARNER DOES IT, not Claude.
+Step 4a — Term drill (Python)     Before any analysis: compute EVERY term of the level
+                                  from data — first on a tiny hand-checkable list
+                                  (learner verifies by hand), then on the level's
+                                  real KCMME data. One term per step: algebra →
+                                  Python line → meaning → hand check. Added
+                                  2026-10-28 (PO): terms are recalled by using them.
+Step 4b — Hands-on KCMME exercise THE LEARNER DOES IT, not Claude.
                                   Claude gives the task, data location and the
                                   expected-shape of the answer; the learner runs it
                                   (notebook / script / code reading) and reports.

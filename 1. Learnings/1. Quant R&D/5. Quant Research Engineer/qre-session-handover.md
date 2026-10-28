@@ -42,7 +42,7 @@ WG1.1–WG1.3 (`docs/architecture/gaps/delivery-workflow-gaps.md`, briefs = Appe
 engine QRE-L1-G1/G2 (`engine-gaps.md`). Adoption check 2026-10-23: WG0.x not yet picked up
 by a Workflow-architect session.
 Current engine = `spine` branch (`~/dev/kcmme-spine`) — see template Current-Engine Rule.
-Level 2: Steps 1–3 done. Step 4 IN PROGRESS (Python): data `2. Practice/3. QRE Exercises/level-2-statistics/xrp_spine_fills.csv` (XRP spine mainnet 26 Oct, 228 fills; passive bids 109, passive asks 5 — ask meter below its 20-fill window). Learner counted fills via Excel filters; switched to Python at Step P1 (venv + jupyterlab setup). NEXT: load CSV in pandas → passive bids → loss = max(0, −drift) → spine estimate on 20-fill blocks → σ, SE = σ ÷ √20, CI → fills needed → ask-side implication. Before teaching: Step 7.9
+Level 2: Steps 1–3 done. Step 4 IN PROGRESS (Python): data `2. Practice/3. QRE Exercises/level-2-statistics/xrp_spine_fills.csv` (XRP spine mainnet 26 Oct, 228 fills; passive bids 109, passive asks 5 — ask meter below its 20-fill window). Learner counted fills via Excel filters; switched to Python at Step P1 (venv + jupyterlab setup). NEXT: Step 4a term drill (Python): tiny list [−1, +1, −2, 0, +3] then XRP data — mean, median, σ, variance, SE, √n, CI, excludes-zero, EV, conditional probability, autocorrelation; THEN Step 4b: load CSV in pandas → passive bids → loss = max(0, −drift) → spine estimate on 20-fill blocks → σ, SE = σ ÷ √20, CI → fills needed → ask-side implication. Before teaching: Step 7.9
 adoption check on WG0.x/WG1.x. Then Step 1 terminology check.
 Learner style notes (Level 1): guide spreadsheet work ONE small step per message, wait for
 "Done"; give algebra first, then the Excel mapping; never pre-compute the learner's answers;
