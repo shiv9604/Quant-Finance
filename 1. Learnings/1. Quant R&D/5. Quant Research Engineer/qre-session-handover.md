@@ -42,8 +42,8 @@ WG1.1–WG1.3 (`docs/architecture/gaps/delivery-workflow-gaps.md`, briefs = Appe
 engine QRE-L1-G1/G2 (`engine-gaps.md`). Adoption check 2026-10-23: WG0.x not yet picked up
 by a Workflow-architect session.
 Current engine = `spine` branch (`~/dev/kcmme-spine`) — see template Current-Engine Rule.
-Level 2: Steps 1–2 done (terms + teaching); one-page summary given 2026-10-28; awaiting Step 3 confirmation → Step 4 = judge the spine's 20-fill adverse estimate (SE, √n). Before teaching: Step 7.9
+Level 2: Steps 1–3 done. Step 4 IN PROGRESS (Python): data `2. Practice/3. QRE Exercises/level-2-statistics/xrp_spine_fills.csv` (XRP spine mainnet 26 Oct, 228 fills; passive bids 109, passive asks 5 — ask meter below its 20-fill window). Learner counted fills via Excel filters; switched to Python at Step P1 (venv + jupyterlab setup). NEXT: load CSV in pandas → passive bids → loss = max(0, −drift) → spine estimate on 20-fill blocks → σ, SE = σ ÷ √20, CI → fills needed → ask-side implication. Before teaching: Step 7.9
 adoption check on WG0.x/WG1.x. Then Step 1 terminology check.
 Learner style notes (Level 1): guide spreadsheet work ONE small step per message, wait for
 "Done"; give algebra first, then the Excel mapping; never pre-compute the learner's answers;
-learner works in Excel (save as .xlsx, not .csv). NEVER use LaTeX ($$…$$, \frac) — the terminal shows it raw; write formulas as plain text (SE = σ ÷ √n) in code blocks. Sign convention + = earned, − = lost.
+learner works in PYTHON (pandas + JupyterLab in ~/qre-venv) from Level 2 Step 4 on — template Python-First Exercise Rule; Excel used only in Level 1. NEVER use LaTeX ($$…$$, \frac) — the terminal shows it raw; write formulas as plain text (SE = σ ÷ √n) in code blocks. Sign convention + = earned, − = lost.

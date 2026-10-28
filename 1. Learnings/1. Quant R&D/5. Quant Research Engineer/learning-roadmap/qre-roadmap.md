@@ -149,6 +149,7 @@ have killed this?"
 ## Level 4 — Python Research Stack on Real Trading Data
 
 **Why (impact)**: the working tool of every quant role; also the hands for Levels 1–3.
+*(2026-10-28: Python is now used in every exercise from Level 2 on — this level consolidates and deepens it rather than introducing it.)*
 Your existing ATQF-with-python notes are the base.
 
 - [ ] numpy, pandas (groupby, merge_asof for time joins, resample), polars basics

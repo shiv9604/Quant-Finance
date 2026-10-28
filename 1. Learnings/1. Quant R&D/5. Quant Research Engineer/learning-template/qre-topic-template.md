@@ -59,6 +59,24 @@ The learner reads in a terminal: NEVER write LaTeX (`$$…$$`, `\frac`, `\sqrt`,
 formulas as plain text in code blocks (`SE = σ ÷ √n`), then the same formula in words, then a
 worked number.
 
+## Python-First Exercise Rule (HARD — added 2026-10-28, PO directive)
+
+All hands-on work (Step 4 exercises, any data check) is done in **Python** — pandas in a
+JupyterLab notebook — never in Excel/Sheets. Reason: the course targets a Quant Developer /
+Research Engineer role, where analysis is done in Python; spreadsheet skill does not transfer.
+- **Environment:** `~/qre-venv` (`source ~/qre-venv/bin/activate`; packages: pandas,
+  jupyterlab — add numpy/matplotlib when a level needs them). One notebook per exercise,
+  saved in that level's exercise folder (`2. Practice/3. QRE Exercises/level-N-…/`).
+- **Teaching order per step:** algebra (plain text) → the Python line(s) → what each part of
+  the line means, word by word → the expected result to check against. One small step per
+  message; wait for "Done".
+- **The learner types and runs the code.** Claude explains, reviews and debugs pasted
+  errors — never runs the analysis for the learner (same rule as Step 4).
+- Python skill is built INSIDE each level's exercise; Level 4 (Python research stack) then
+  consolidates and deepens it instead of introducing it.
+- Data prep exception: Claude may extract raw logs (lz4/jsonl) to a plain CSV for the
+  exercise — that is plumbing, not the skill. No computed answer columns in the CSV.
+
 ## Current-Engine Rule (added 2026-10-24, PO directive)
 
 The live engine is the **strip-down `spine` branch** (worktree `~/dev/kcmme-spine`; sibling
