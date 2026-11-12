@@ -29,10 +29,11 @@ sell, p = fill price, q = qty, m₀ = mid at fill, m_H = mid H later, m_T = mid 
 + = earned, − = lost. Markouts at several horizons show *what kind* of adverse selection.
 Reconcile to the exchange before trusting any bar.
 
-## Levels 0–19 — Full Depth
+## Levels 0–16 — Full Depth
 
 > One section per roadmap level (`learning-roadmap/qre-roadmap.md`), in order, each
-> written end-to-end per `learning-template/qre-topic-template.md` (sections 1–11).
+> written end-to-end per `learning-template/qre-topic-template.md` (sections 1–8;
+> Levels 0–1 were written under the earlier 11-section format).
 > *(Pending)* = not yet taught.
 
 ### Level 0 — How a MM Desk Works: the Research → Production Loop
@@ -395,56 +396,52 @@ bars (labels, not just sums); changes judged by which bar moved vs the predicted
 7. Does the proposed fix target the bar that actually dominates — and what does it do to the other bars and the net?
 
 
-### Level 2 — Probability & Statistics for Noisy Outcomes
+### Level 2 — Signal vs Noise: Statistics for Noisy Outcomes
 *(Pending)*
 
-### Level 3 — Experiment Design & Hypothesis Testing
+### Level 3 — Cheap, Decisive Experiments
 *(Pending)*
 
-### Level 4 — Python Research Stack on Real Trading Data
+### Level 4 — Metrics That Decide Money: Unit Economics of Research
 *(Pending)*
 
-### Level 5 — Market Data Engineering
+### Level 5 — Data You Can Trust
 *(Pending)*
 
-### Level 6 — Reading C++ for Review
+### Level 6 — Reading an Engine: System Map & Implementation Theater
 *(Pending)*
 
-### Level 7 — System Map & Code Review in a Trading Engine
+### Level 7 — Backtesting & Simulation: When to Trust a Replay
 *(Pending)*
 
-### Level 8 — Backtesting & Simulation Methodology
+### Level 8 — Overfitting & Robust Validation
 *(Pending)*
 
-### Level 9 — Regression & Time Series for Signals
+### Level 9 — Signals & Time Series
 *(Pending)*
 
-### Level 10 — Overfitting & Robust Validation
+### Level 10 — Research Notes & Research Review
 *(Pending)*
 
-### Level 11 — Research Notes & Research Review
+### Level 11 — Production Risk Controls & Operations
 *(Pending)*
 
-### Level 12 — Writing Performant Modern C++
+### Level 12 — Optimal Market-Making Models
 *(Pending)*
 
-### Level 13 — Production Trading Engineering & Risk Controls
+### Level 13 — Machine Learning for Microstructure
 *(Pending)*
 
-### Level 14 — Optimal Market-Making Models (Stochastic Control)
+### Level 14 — Latency & Infrastructure Economics
 *(Pending)*
 
-### Level 15 — Machine Learning for Microstructure
+### Level 15 — Portfolio, Risk & Capital Allocation
 *(Pending)*
 
-### Level 16 — Low-Latency Systems
+### Level 16 — Leading Research: Agenda, Prioritisation, Founder Lens
 *(Pending)*
 
-### Level 17 — Portfolio, Risk & Capital Allocation
-*(Pending)*
+## Job-Ready Build Track (B1–B6)
 
-### Level 18 — Leading Research: Agenda, Prioritisation, Platform
-*(Pending)*
-
-### Level 19 — Interview Mastery & Career Strategy
-*(Pending)*
+> Coding every QRE + Market Making concept — taught last, per the roadmap.
+> *(Pending)*
