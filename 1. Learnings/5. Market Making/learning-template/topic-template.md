@@ -2,14 +2,14 @@
 
 Use this structure for every topic in the learning program.
 Two active roadmaps:
-- **Lifetime Roadmap** (Levels 0–20, user-provided): the full institutional MM
+- **Lifetime Roadmap** (Levels 0–21, user-provided): the full institutional MM
   curriculum from market structure to operations. This is the long-term map.
 - **KCMME Profitability Roadmap** (Layers 0–13, in `learning-roadmap/profitability-roadmap.md`):
   a focused KCMME-specific deep dive — why the engine is GPNL-negative and what fixes it.
   All 15 layers are COMPLETE as of 2026-07-09. UPDATE 2026-07-10: the Lifetime
   Roadmap restarted from Level 0 — every level gets cleared end-to-end in
   chronological order. Taught content goes into the `### Level N` section of
-  `## Intermediate to Advance — Lifetime Depth (Levels 0–20)` in market-making.md.
+  `## Intermediate to Advance — Lifetime Depth (Levels 0–21)` in market-making.md.
 
 Goal: understand each concept at professional-firm depth (Jane Street / Citadel level),
 then map it to KCMME to find gaps and decide if they're real issues.

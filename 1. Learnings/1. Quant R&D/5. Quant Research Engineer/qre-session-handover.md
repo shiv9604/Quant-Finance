@@ -11,6 +11,12 @@ on money, and how it works behind the scene — so every AI plan and result on K
 judged. Execution is offloaded to AI while learning. The **Job-Ready Build Track** (last
 tier) codes every QRE + Market Making concept and makes the learner industry job-ready.
 
+Roadmap shape (PO 2026-11-13, after a Fable 5.1 relevance review): traditional order by
+prerequisite (Foundation → Intermediate → Lifetime → Build Track); relevance from examples
+(current business problem → future stages → past); a level needed early is taught in a
+separate session on request and marked ✅. Topics moved to Market Making went only into its
+upcoming levels (16, 19, new 21); MM next = Level 14.
+
 Why restructured (2026-11-13): the Market Making course (theory-first, Claude runs the
 engine check, learner judges) moved ~1 level/week. The first QRE design (learner computes
 in Excel/Python, term drills, interview drills) stalled Level 2 for 3 weeks on syntax.

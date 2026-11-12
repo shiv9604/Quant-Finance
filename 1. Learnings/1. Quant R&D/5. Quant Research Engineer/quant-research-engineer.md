@@ -29,7 +29,7 @@ sell, p = fill price, q = qty, m₀ = mid at fill, m_H = mid H later, m_T = mid 
 + = earned, − = lost. Markouts at several horizons show *what kind* of adverse selection.
 Reconcile to the exchange before trusting any bar.
 
-## Levels 0–16 — Full Depth
+## Levels 0–17 — Full Depth
 
 > One section per roadmap level (`learning-roadmap/qre-roadmap.md`), in order, each
 > written end-to-end per `learning-template/qre-topic-template.md` (sections 1–8;
@@ -402,43 +402,46 @@ bars (labels, not just sums); changes judged by which bar moved vs the predicted
 ### Level 3 — Cheap, Decisive Experiments
 *(Pending)*
 
-### Level 4 — Metrics That Decide Money: Unit Economics of Research
+### Level 4 — Metrics That Decide Money: Like-for-Like Cost per $1k
 *(Pending)*
 
 ### Level 5 — Data You Can Trust
 *(Pending)*
 
-### Level 6 — Reading an Engine: System Map & Implementation Theater
+### Level 6 — Replay Trust: Measuring the Sim-vs-Live Gap
 *(Pending)*
 
-### Level 7 — Backtesting & Simulation: When to Trust a Replay
+### Level 7 — Queue-Priority Measurement
 *(Pending)*
 
-### Level 8 — Overfitting & Robust Validation
+### Level 8 — Overfitting & Held-Out Validation
 *(Pending)*
 
-### Level 9 — Signals & Time Series
+### Level 9 — Latency Measurement & Engineering
 *(Pending)*
 
-### Level 10 — Research Notes & Research Review
+### Level 10 — Reading an Engine: System Map & Implementation Theater
 *(Pending)*
 
-### Level 11 — Production Risk Controls & Operations
+### Level 11 — Venue Onboarding & Integration Verification
 *(Pending)*
 
-### Level 12 — Optimal Market-Making Models
+### Level 12 — Risk Controls & Incidents
 *(Pending)*
 
-### Level 13 — Machine Learning for Microstructure
+### Level 13 — Signal Evaluation
 *(Pending)*
 
-### Level 14 — Latency & Infrastructure Economics
+### Level 14 — Research Notes, Prioritisation & Investor-Grade Evidence
 *(Pending)*
 
-### Level 15 — Portfolio, Risk & Capital Allocation
+### Level 15 — Reliability, Ops Automation & Capacity
 *(Pending)*
 
-### Level 16 — Leading Research: Agenda, Prioritisation, Founder Lens
+### Level 16 — Capital Allocation Across Coins & Venues
+*(Pending)*
+
+### Level 17 — Machine Learning for Microstructure (optional)
 *(Pending)*
 
 ## Job-Ready Build Track (B1–B6)

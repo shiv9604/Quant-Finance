@@ -75,6 +75,19 @@ Every concept is taught in this order:
    desk does instead (Jane Street / Optiver / Citadel Securities / Wintermute).
 5. **Ask the AI** — the 1–3 questions this concept lets the learner put to any AI plan.
 
+## Example Priority Rule (HARD — added 2026-11-13, PO)
+
+The roadmap order is traditional (by prerequisite); relevance comes from the examples.
+Every worked example, "your call" question, KCMME example and gap check is drawn, in this
+priority: **1. the current business problem** (today: HTX cost per $1k, queue priority,
+rebates / RPI, exchange deployment) → **2. future stages** (Binance, max revenue on one
+exchange, spot, multi-exchange, other markets) → **3. past features** (M0–M10 history —
+mainly for workflow counterfactuals). Check `docs/stripdown/README.md` and the latest
+business memory before choosing examples; they move fast.
+
+A level taught early in a separate session (PO asks for it on priority) follows the same
+contract and Step 6 marks it ✅ in the roadmap, so the main path skips it.
+
 ## Plain-Text Formula Rule (HARD — added 2026-10-28, PO)
 
 The learner reads in a terminal: NEVER write LaTeX (`$$…$$`, `\frac`, `\sqrt`, `\text`). Write

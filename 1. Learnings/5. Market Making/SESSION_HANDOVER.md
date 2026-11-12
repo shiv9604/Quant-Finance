@@ -5,6 +5,14 @@
 **Context**: this file is the entry point for the next Claude session.
 Read it fully before responding to the user.
 
+> **UPDATE 2026-11-13 (read first):** Lifetime Levels 0–13 are taught (last: Level 13
+> Simulation, 2026-10-20). NEXT = **Level 14**. Scope notes were added to pending Levels 14,
+> 17, 18 (method lives in the QRE course — point to it, never re-teach), new topics were added
+> to Levels 16 and 19 (rebate tiers, volume vs cost per $1k, RPI, colocation value, hedging),
+> and **Level 21 — Optimal Market-Making Models** was added (moved from QRE). Each level's
+> KCMME check uses examples in priority: current business problem → future stages → past.
+> Sister course: `../1. Quant R&D/5. Quant Research Engineer/` (its handover has its state).
+
 ---
 
 ## 1. What This Program Is
@@ -22,7 +30,7 @@ confirmed. This rule was violated once mid-program and caught by the user.
 
 ## 2. Two Roadmaps in Play
 
-### Lifetime Roadmap (user-provided, Levels 0–20)
+### Lifetime Roadmap (user-provided, Levels 0–21)
 The full institutional MM curriculum. Levels in order:
 0 Mental Model | 1 Market Structure | 2 Limit Order Book | 3 Maker Economics |
 4 Fair Value | 5 Spread Design | 6 Adverse Selection | 7 Inventory |
@@ -47,7 +55,7 @@ KCMME-angled, not canonical depth. Do NOT skip to Level 14. Next up:
 
 market-making.md was restructured for this (commit in the trading repo,
 2026-07-10): `## Foundation` = light junior onboarding read; `## Intermediate to
-Advance — Lifetime Depth (Levels 0–20)` = one section per level in chronological
+Advance — Lifetime Depth (Levels 0–21)` = one section per level in chronological
 order, the senior end-to-end read (heavy Foundation content moved here as
 *(Interim)* entries under their home levels; standalone term entries grouped at
 the end pending fold into home levels); `## Market making Profitability` = the

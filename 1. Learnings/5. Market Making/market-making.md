@@ -95,7 +95,7 @@ For Example - If a person is willing to sell 10 stocks, and in order book 0.01, 
 
 ---
 
-## Intermediate to Advance — Lifetime Depth (Levels 0–20)
+## Intermediate to Advance — Lifetime Depth (Levels 0–21)
 
 > The senior read. One section per Lifetime Roadmap level, in chronological
 > order, each written end-to-end — navigate to a level and learn it inside out.
@@ -1523,6 +1523,11 @@ Automated daily universe refresh; per-asset trait dashboards (toxicity share, re
 
 *(Pending.)*
 
+> Scope note (2026-11-13): the statistics and validation METHOD (noise vs signal,
+> experiments, held-out validation) is taught in the QRE course Levels 2, 3, 8. This level
+> covers only what is MM-specific to validate (fills, markouts, queue, regime) and points to
+> QRE for the method — never re-teach it.
+
 ---
 
 ### Level 15 — Adaptive Control
@@ -1532,6 +1537,9 @@ Automated daily universe refresh; per-asset trait dashboards (toxicity share, re
 ---
 
 ### Level 16 — Cross-Venue / Cross-Asset
+
+> Added topics (2026-11-13, moved from the QRE roadmap): hedging and correlation across
+> coins and venues, beta, and how they set capital per coin/venue (QRE Level 16 measures it).
 
 #### Multi-Asset & Cross-Venue Inventory Control
 
@@ -1615,11 +1623,19 @@ In real crypto market making, inventory is not isolated to a single asset or exc
 
 *(Pending.)*
 
+> Scope note (2026-11-13): risk as a MARKET concept lives here; the controls, kill paths
+> and incident practice are QRE Level 12.
+
 ---
 
 ### Level 18 — Operations
 
 *(Pending.)*
+
+> Scope note (2026-11-13): operating practice (monitoring, deployment, reliability, ops
+> automation, capacity) is QRE Levels 12 and 15. This level keeps only exchange rules as
+> market facts: rate limits, self-trade prevention, order-to-trade ratios, tier-keeping
+> conditions.
 
 ---
 
@@ -1627,11 +1643,26 @@ In real crypto market making, inventory is not isolated to a single asset or exc
 
 *(Pending.)*
 
+> Added topics (2026-11-13, moved from the QRE roadmap): maker rebate tiers and
+> tier-keeping; volume vs cost per $1k (when more volume is worth a worse per-$1k number);
+> RPI (retail price improvement) order economics; what speed / colocation is worth
+> (latency as money, not engineering). QRE Level 4 owns the metric decomposition.
+
 ---
 
 ### Level 20 — Institutional Reality
 
 *(Pending.)*
+
+---
+
+### Level 21 — Optimal Market-Making Models
+
+*(Pending — added 2026-11-13, moved from the QRE roadmap.)*
+
+> Avellaneda–Stoikov, Guéant–Lehalle, Cartea–Jaimungal — the intuition, not the
+> derivation: reservation price, optimal spread, inventory penalty; calibration from data;
+> where they break in crypto. Builds on Level 5 (Spread Design) and Level 7 (Inventory).
 
 ---
 
