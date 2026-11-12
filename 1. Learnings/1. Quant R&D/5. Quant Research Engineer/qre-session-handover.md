@@ -21,7 +21,7 @@ Why restructured (2026-11-13): the Market Making course (theory-first, Claude ru
 engine check, learner judges) moved ~1 level/week. The first QRE design (learner computes
 in Excel/Python, term drills, interview drills) stalled Level 2 for 3 weeks on syntax.
 
-Sister program: Market Making (`../../5. Market Making/`, Levels 0–20) = domain pillar.
+Sister program: Market Making (`../../5. Market Making/`, Levels 0–21) = domain pillar.
 This course = statistics, research method, engineering judgment, business of research.
 Cross-link, never duplicate.
 
