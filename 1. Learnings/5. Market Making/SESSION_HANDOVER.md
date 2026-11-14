@@ -105,7 +105,7 @@ without teaching). User caught it. Do not repeat.
 | Alpha strategies (offensive flips) | `KCMME repo: docs/architecture/alpha-strategies.md` |
 | This handover file | `~/Desktop/trading/1. Learnings/5. Market Making/SESSION_HANDOVER.md` |
 
-KCMME repo working branch: **`fugu-dev`** (all gap docs committed here, not `claude-dev`).
+KCMME gap branch: **`learning/gaps`** (PO 2026-11-15 — all gap docs committed here; index `docs/architecture/gaps/GAPS-INDEX.md`; the `fugu-dev` copies are a frozen snapshot at `165f7d89c`).
 Last commit: `3953c67e6` — Layer 13 KCMME check body section.
 
 ---

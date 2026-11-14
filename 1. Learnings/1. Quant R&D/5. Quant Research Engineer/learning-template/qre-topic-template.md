@@ -48,7 +48,8 @@ Step 6 — Doc update            Write the level into quant-research-engineer.md
                                entry + full-depth section), a short entry into
                                qre-career-portfolio.md, learner-confirmed gaps into the
                                two gap files. Commit + push the trading repo; KCMME gap
-                               files go to `fugu-dev` (PO directive 2026-10-21).
+                               files go to branch `learning/gaps` + a row in GAPS-INDEX.md
+                               (PO 2026-11-15; was `fugu-dev` from 2026-10-21).
 ```
 
 Steps 4–6 are FORBIDDEN before Step 3 confirmation. Step 6 is FORBIDDEN before Step 5 is

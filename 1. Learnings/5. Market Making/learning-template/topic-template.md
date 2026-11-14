@@ -39,7 +39,7 @@ Step 4 — KCMME check
 Step 5 — Doc update
          Only now: write teaching content to market-making.md AND
          write confirmed gaps to docs/architecture/gaps/engine-gaps.md.
-         Commit + push atomically to fugu-dev.
+         Commit + push atomically to branch learning/gaps (PO 2026-11-15; index: GAPS-INDEX.md).
 ```
 
 This sequence is not a preference — it is the contract. Steps 4 and 5 are

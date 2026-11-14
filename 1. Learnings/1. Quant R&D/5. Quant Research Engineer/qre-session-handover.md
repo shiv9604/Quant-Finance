@@ -33,8 +33,9 @@ Cross-link, never duplicate.
 | Teaching contract (6 steps) | `learning-template/qre-topic-template.md` (inherits the MM template's HARD rules) |
 | Taught content | `quant-research-engineer.md` |
 | Proof-of-skill entries | `qre-career-portfolio.md` |
-| Engine gaps | KCMME `docs/architecture/gaps/engine-gaps.md` (on `fugu-dev`) |
-| Delivery-workflow gaps | KCMME `docs/architecture/gaps/delivery-workflow-gaps.md` (on `fugu-dev`) |
+| Gap index (all gaps, both courses) | KCMME `docs/architecture/gaps/GAPS-INDEX.md` (branch `learning/gaps`) |
+| Engine gaps | KCMME `docs/architecture/gaps/engine-gaps.md` (branch `learning/gaps`) |
+| Delivery-workflow gaps | KCMME `docs/architecture/gaps/delivery-workflow-gaps.md` (branch `learning/gaps`) |
 
 ## 3. Non-Negotiables
 
@@ -50,7 +51,7 @@ Cross-link, never duplicate.
 
 ## 4. Next Step (updated 2026-11-15)
 
-Level 0 ✅, Level 1 ✅, **Level 2 ✅ 2026-11-15**. Gaps on KCMME `fugu-dev` (`165f7d89c`):
+Level 0 ✅, Level 1 ✅, **Level 2 ✅ 2026-11-15**. Gaps on KCMME branch `learning/gaps` (index `GAPS-INDEX.md`; fugu-dev copy frozen at `165f7d89c`):
 delivery WG0.1–WG0.8, WG1.1–WG1.3, WG2.1–WG2.2 (briefs = Appendix C, D, E — all still
 unsent; the PO runs one Workflow-architect session for them); engine QRE-L1-G1/G2,
 QRE-L2-G1/G2. Current engine = `spine` (`~/dev/kcmme-spine`; state in KCMME master
