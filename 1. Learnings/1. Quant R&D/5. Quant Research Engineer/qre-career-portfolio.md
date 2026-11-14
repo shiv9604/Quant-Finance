@@ -52,3 +52,26 @@ Entry format:
   T — Verify where the money really went.
   A — Rebuilt the waterfall by hand from raw fills, compared bar-by-bar with the engine, reconciled to the exchange export.
   R — Found a labelling bug (spread counted as adverse selection) and a log missing 36 taker exits; true loss 40× the engine's figure; root cause = taker exits, not quote width.
+
+### Level 2 — Signal vs noise: judging results and tests on a live MM business
+- **What I did** (judged / found on KCMME): judged real HTX cost-down results with the
+  CI-vs-bar verdict rule (first live HTX test: −0.183 [−0.279, −0.116] vs a −0.10 stop bar →
+  FAIL; ETH basket inclusion −0.101 that becomes −0.124 without one day → CONTINUE); found all
+  six flaws in an AI-proposed queue-position A/B (coin split, two changes, sequential hours,
+  fill-count n, bar set after the result, no guardrail) and rewrote it as a pre-registered
+  switchback test; showed the lean's +0.053 per $1k cost win must be judged as money per hour
+  because it keeps ~1/3 of volume and our cost straddles the rebate break-even.
+- **Result**: engine finding — the spine's 20-fill adverse meter wobbles ±1.5 ticks
+  (autocorrelation 0.38 → ~9 effective fills), the 5 worst of 109 fills carry 26 % of it, it
+  predicts the next fill at only 0.13, and under best-price entry its output never moves the
+  quote. Filed engine gaps QRE-L2-G1/G2 and delivery gaps WG2.1–WG2.2 (verdict statistical
+  standard, A/B design checklist; KCMME fugu-dev `165f7d89c`).
+- **What it proves**: Junior bar on statistical judgment (SE, CIs, units, verdicts); Mid-level
+  on experiment design (switchback, randomisation, guardrails) and catching an
+  implementation-theater signal.
+- **Interview story** (STAR):
+  S — My startup's cost-down claims rested on short before/after runs and AI-written reports.
+  T — Decide which results were real and which tests could decide anything.
+  A — Re-read results by block-level CIs against pre-written bars; redesigned an A/B as a randomised switchback; measured the engine's own toxicity meter's noise and predictive power.
+  R — Separated decided results from CONTINUEs, blocked a size step on a 2-day result, found a meter with no decision effect, filed two process gaps.
+

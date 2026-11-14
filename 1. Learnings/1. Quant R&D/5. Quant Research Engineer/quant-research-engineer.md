@@ -29,6 +29,15 @@ sell, p = fill price, q = qty, m₀ = mid at fill, m_H = mid H later, m_T = mid 
 + = earned, − = lost. Markouts at several horizons show *what kind* of adverse selection.
 Reconcile to the exchange before trusting any bar.
 
+### Signal vs noise (Level 2)
+Every number is a noisy draw: report it with its range. `SE = σ ÷ √n` (4× data halves it),
+`CI ≈ mean ± 2 × SE`; count n in days or blocks, never fills (fills cluster). Verdict from
+where the CI sits against a bar written before the run: fully good side PASS, fully bad side
+FAIL, crossing CONTINUE. Days needed per side > 2 × (2σ ÷ effect)², computed first. Watch
+tails (mean vs median vs worst day). A fair A/B = one change, concurrent, same unit
+alternating in random order (switchback) with washout, pre-registered, block-level n, plus
+guardrails — for a rebate-paid maker, money per hour = volume × (rebate + cost per $1k).
+
 ## Levels 0–17 — Full Depth
 
 > One section per roadmap level (`learning-roadmap/qre-roadmap.md`), in order, each
@@ -397,7 +406,156 @@ bars (labels, not just sums); changes judged by which bar moved vs the predicted
 
 
 ### Level 2 — Signal vs Noise: Statistics for Noisy Outcomes
-*(Pending)*
+*Taught 2026-11-15 (redo in the 6-step format). Includes the A/B design foundations the
+learner asked for early (Level 3 builds on them).*
+
+#### 1. What It Is — and the money decision it changes
+Every cost, P&L or toxicity number is one draw from a noisy process. This level decides
+**whether an improvement is real (keep it, scale size, tell investors) or luck (scaling it
+multiplies losses and burns credibility)**. Statistics here is the tool that turns "it went
+from −0.115 to −0.073" into one of three verdicts: PASS, FAIL or CONTINUE.
+
+#### 2. Simple Example
+Old 5 days of cost per $1k: −0.07, −0.16, −0.10, −0.15, −0.10 → mean −0.115.
+New 5 days: −0.03, −0.12, −0.05, −0.11, −0.06 → mean −0.073. The gap is 0.042 — but the
+old best day beats two of the new days.
+```
+σ (daily wobble) ≈ 0.04 · SE each = σ ÷ √n = 0.04 ÷ √5 ≈ 0.018
+SE_diff = √(SE_old² + SE_new²) ≈ 0.025 · CI of the gap = 0.042 ± 2 × 0.025 = −0.008 … +0.092
+```
+The range crosses zero → **CONTINUE** (not "no effect": "not proven yet").
+Works-correctly case: a concurrent 10-day test with gap CI +0.004 … +0.026 → **PASS**.
+
+#### 3. Why the Naive Approach Fails
+A software engineer compares two averages, or counts every fill as a data point ("4,000
+fills, CI excludes zero"). Both fail: averages ignore wobble, and fills in the same hour
+share one market mood (clustered / autocorrelated), so 4,000 fills over 2 days is n = 2
+days — √4000 vs √2 makes the CI ~45× too confident. And before/after compares two markets,
+not two rules.
+
+#### 4. How It Works (Simple → Sophisticated)
+**Basic — describe the pile.** Mean (sum ÷ count), median (middle value), σ (typical
+distance from the mean), variance (σ²), n (how many). Mean ≠ median by a lot = a few big
+events drive the result.
+*Still misses:* how much the mean itself would move on a re-run.
+
+**Intermediate — trust ranges.** `SE = σ ÷ √n`; 4× the data only halves SE (√n rule).
+`CI ≈ mean ± 2 × SE`. For a gap between two groups, `SE_diff = √(SE_a² + SE_b²)`.
+Verdict rule (pre-written bar):
+
+| Where the CI sits vs the bar | Verdict |
+|---|---|
+| Entirely on the good side | PASS |
+| Entirely on the bad side | FAIL |
+| Crosses the bar | CONTINUE — more days / blocks |
+
+A small n is already inside the CI width: a wide CI fully on one side is still decided.
+Days needed, computed before the run from σ (past days) and the smallest effect worth acting
+on: `days per side > 2 × (2σ ÷ effect)²` (derivation: require effect > 2 × SE_diff and
+solve for n). Halving the effect = 4× the days (σ 0.04: effect 0.08 → 2 days, 0.04 → 8,
+0.02 → 32, 0.01 → 128).
+*Still misses:* tails, clustering, and what else differed between the two samples.
+
+**Intermediate — traps.**
+- *Fat tails:* rare huge moves are more common than a bell curve says; one day or one fill
+  can decide the mean. Report mean + median + worst day; a basket decision that flips when one
+  day is removed rests on that day (verdict CONTINUE). The median is not a universal fix —
+  on lumpy data with many zeros it jumps more than the mean; capping each observation
+  (winsorising) keeps "this was bad" without letting one monster dominate.
+- *Conditional probability / Bayes:* P(A | B) = chance of A given B.
+  `P(adverse | signal) = P(a) × P(signal | a) ÷ [P(a) × P(signal | a) + P(not a) × P(signal | not a)]`
+  — 0.20 × 0.60 ÷ (0.12 + 0.80 × 0.20) = 0.43: one piece of evidence moves 20 % to 43 %.
+  A maker fill is itself evidence of adverse movement.
+- *Clustering:* with lag-1 autocorrelation ρ, `n_effective ≈ n × (1 − ρ) ÷ (1 + ρ)` —
+  20 fills at ρ = 0.38 behave like ~9. Analyse by day or block (day-clustered CI).
+- *Correlation ≠ causation:* moving together in time (cost fell the week the market calmed)
+  is not proof the change caused it.
+*Still misses:* how to build a comparison where only the change differs — A/B design.
+
+**Professional — true A/B design (the 6 ingredients).**
+
+| # | Ingredient | Kills |
+|---|---|---|
+| 1 | One change only | "which change did it?" |
+| 2 | Concurrent — A and B in the same hours | market-mood difference |
+| 3 | Fair assignment — same unit alternating, random order | unit-character difference, order bias |
+| 4 | Pre-registered — metric, bar, n, stop rule before the run | moving the goalposts |
+| 5 | Right unit (blocks / days), enough pairs | fake confidence |
+| 6 | Guardrails — what the change might break | a "win" that loses money |
+
+Assignment designs (all kill the character of the unit — coin, symbol, account):
+- **Difference-in-differences (DiD):** both groups run old first, then only one switches;
+  effect = (treated after − before) − (control after − before). Within-group subtraction
+  removes fixed character; the control's change removes the market move. Misses: a market
+  move that hits the groups differently.
+- **Crossover:** swap groups halfway, so every unit gets both versions. Misses: carry-over.
+- **Switchback / paired blocks:** the same unit alternates ON/OFF in short blocks; compare each
+  ON block with its neighbour OFF block; n = number of pairs. Misses: carry-over; needs many pairs.
+- **Carry-over** = the previous setting leaking into the next block; **washout** = minutes
+  discarded after each switch.
+
+Noise vs bias: **noise** = random differences that favour either side (more pairs average it
+out; the CI includes it); **bias** = a difference that always favours one side (more data
+repeats it). Random order inside each pair turns market shifts from bias into noise; many
+pairs make the 50/50 split actually happen; the CI measures what is left. Fixed order
+(ON always second) = bias. Add an A/A run (same version both sides, gap should be ≈ 0) or a
+balance check (volatility / toxicity similar in ON and OFF blocks).
+
+Offline replay vs live: replay = identical market, **guessed fills** (needs a fidelity check
+against live first); live = **real fills**, noisier market. Desks find effects offline and
+confirm them live; each covers the other's blind spot.
+
+Guardrail that decides money for a rebate-paid maker:
+```
+money per hour = volume ($1k per hour) × (rebate per $1k + cost per $1k)
+```
+A change that cuts cost per $1k but keeps 1/3 of the volume wins only when each trade loses
+after the rebate (cost worse than −rebate); when each trade earns, trading less throws income
+away — and lower volume can lose the rebate tier itself.
+
+#### 5. Why Should You Believe This?
+Ship a 5-day "−0.073", tell an investor, triple size; two weeks later a choppier market puts
+cost back at −0.12 — the claim fails publicly and 3× size triples the loss. The CONTINUE
+verdict would have cost three more days. The asymmetry — days of waiting vs money and
+credibility — is why desks never quote a number without its range.
+
+#### 6. Impact & Professional Standard
+Ignored, it costs: lucky changes scaled (losses × size), good changes killed on one bad day,
+investor claims that do not hold. Jane Street / Optiver / Citadel Securities / Wintermute:
+results reported with CIs on day- or hour-block units; bars and sample sizes pre-registered;
+offline replay (fidelity-checked) before live; live tests interleaved / switchback with
+randomised order; guardrails (volume, money/hour, risk) beside every win metric; CONTINUE is
+a normal outcome. Owner: the quant researcher designs and signs the test; the research
+engineer builds the harness and the verdict report.
+
+#### 7. Summary + Sees vs Misses
+
+| What | Why | Professional standard |
+|---|---|---|
+| SE, CI, √n | how sure a number is | every number with its range |
+| Verdict from CI vs bar | decision, not opinion | PASS / FAIL / CONTINUE, bar written first |
+| Days needed | can the test decide at all? | computed before the run |
+| Clustering, tails | real n is smaller; one event can decide | day/block units; mean + median + worst |
+| A/B design | only the change differs | 6 ingredients; switchback in random order |
+| Guardrails | a cheaper trade can mean less money | money/hour + volume target |
+
+| Method | Sees | Misses |
+|---|---|---|
+| Compare two means | direction | luck |
+| CI with fills as n | some wobble | clustering — far too confident |
+| CI with days as n | honest range | different markets between periods |
+| Mean + median + worst day | tail-driven results | causation |
+| Concurrent switchback, random order, day/block CI | the change's real effect | replay-vs-live fill differences (Level 6) |
+
+#### 8. Ask the AI — Judgment Checklist
+1. What is n counted in — days / blocks, or fills? What is the CI?
+2. What were σ and the minimum effect, and how many days did that say were needed — before the run?
+3. Were the bar and stop rule written before the result? Does the verdict follow from CI vs bar?
+4. Were A and B concurrent, one change only, on the same units, in random order, with washout?
+5. Was there an A/A or balance check?
+6. Mean vs median vs worst day — does one day or one fill decide it? Does it flip without it?
+7. Replay result: was the replay fidelity-checked against live?
+8. Guardrail: money per hour (volume × net) and the venue tier volume target, ON vs OFF?
 
 ### Level 3 — Cheap, Decisive Experiments
 *(Pending)*

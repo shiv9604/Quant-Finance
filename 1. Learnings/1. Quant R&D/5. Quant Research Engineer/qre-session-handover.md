@@ -48,21 +48,26 @@ Cross-link, never duplicate.
 - Non-quant accessibility: every symbol glossed every time; every math word explained.
 - Plain-text formulas, never LaTeX. Sign convention: + = earned, − = lost.
 
-## 4. Next Step (updated 2026-11-13)
+## 4. Next Step (updated 2026-11-15)
 
-Level 0 ✅, Level 1 ✅. Gaps on KCMME `fugu-dev`: delivery WG0.1–WG0.8 + WG1.1–WG1.3
-(briefs = Appendix C + D), engine QRE-L1-G1/G2. Current engine = `spine`
-(`~/dev/kcmme-spine`; state in KCMME master `docs/stripdown/README.md`).
+Level 0 ✅, Level 1 ✅, **Level 2 ✅ 2026-11-15**. Gaps on KCMME `fugu-dev` (`165f7d89c`):
+delivery WG0.1–WG0.8, WG1.1–WG1.3, WG2.1–WG2.2 (briefs = Appendix C, D, E — all still
+unsent; the PO runs one Workflow-architect session for them); engine QRE-L1-G1/G2,
+QRE-L2-G1/G2. Current engine = `spine` (`~/dev/kcmme-spine`; state in KCMME master
+`docs/stripdown/README.md`); live research = HTX sessions (`docs/htx/reports/` on
+`docs/htx-integration-research`, esp. report 09 tracker) — use it for current-problem examples.
 
-**Level 2 (Signal vs Noise)** — Steps 1–3 done. Under the old format the learner already
-worked, on the tiny list [−1, 1, −2, 0, 3]: mean 0.2, median 0, σ 1.92, variance 3.7,
-SE 0.86 (n=5) → 0.39 (n=20, √n rule), 95% CI includes zero, fills needed > (2σ ÷ effect)²
-≈ 312, EV = P(bad)×avg(bad) + P(good)×avg(good) = mean. Open from old Drill 6: the spine
-adverse number −mean(min(0, drift)) equals the P(bad)×avg(bad) part of EV.
-NEXT (new format): short teaching of the remaining ideas — fat tails / median vs mean,
-Bayes for adverse selection, clustered fills (autocorrelation) — then Step 4 KCMME example:
-Claude computes on `2. Practice/3. QRE Exercises/level-2-statistics/xrp_spine_fills.csv`
-(XRP spine mainnet 26 Oct, 228 rows; passive bids 109, passive asks 5) how much the spine's
-20-fill AdverseMeter estimate wobbles vs the fills needed, and the ask-side cold start;
-one "your call" question. Then Step 5 gap check (start with the adoption check on
-WG0.x/WG1.x), Step 6 doc + commit. Then Level 3 (Cheap, Decisive Experiments).
+How Level 2 went (for pacing): the learner asked to learn A/B design BEFORE judging results;
+it worked best as one question at a time with real HTX numbers, correcting until right,
+re-explaining with a toy-number example when stuck (race/wind analogy for random order,
+tea-stall for Case A/B). Define every case label and every bar in words before asking.
+Learner habit to reinforce: name the ingredient number AND the fix, not only the flaw.
+
+NEXT: **Level 3 (Cheap, Decisive Experiments)** — start with Step 5 rule 9 adoption check
+(WG0.x–WG2.x routed? used?), then Step 1 terms. A/B design foundations are already taught
+(roadmap Level 3 note): recap in one line, then teach the cost ladder, minimum detectable
+effect / power, the many-tests trap, confounders, ablation; KCMME example = grade the HTX
+pre-registered agenda (report 08) and tracker 09 verdicts (which tests could decide).
+Free video companions (learner watches on their own): StatQuest (stats), Udacity "A/B
+Testing" by Google, Quantopian lectures, López de Prado talks, Carl Cook CppCon 2017,
+Jane Street "Signals and Threads".

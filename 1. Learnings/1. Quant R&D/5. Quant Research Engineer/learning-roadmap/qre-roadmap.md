@@ -44,7 +44,7 @@ Role this course targets (how a MM desk splits the work you currently do alone):
 |---|---|---|---|---|
 | Foundation | 0 | How a MM desk works — the research → production loop | — | ✅ 2026-10-21 |
 | Foundation | 1 | P&L attribution & markouts | 0 | ✅ 2026-10-23 |
-| Foundation | 2 | Signal vs noise — statistics for noisy outcomes | 1 | 🟡 in progress |
+| Foundation | 2 | Signal vs noise — statistics for noisy outcomes | 1 | ✅ 2026-11-15 |
 | Foundation | 3 | Cheap, decisive experiments | 2 | ⬜ |
 | Foundation | 4 | Metrics that decide money — like-for-like cost per $1k | 1, 2 | ⬜ |
 | Foundation | 5 | Data you can trust — feeds, clocks, recording, logs vs exchange | 1 | ⬜ |
@@ -100,7 +100,7 @@ can't be traced to a cause, so no fix can be judged.
 that bar actually move?"
 **Cross-links**: MM Level 3 (Maker Economics), Level 6 (Adverse Selection); Profitability L1, L12.
 
-## Level 2 — Signal vs Noise: Statistics for Noisy Outcomes 🟡
+## Level 2 — Signal vs Noise: Statistics for Noisy Outcomes ✅ 2026-11-15
 
 **Why (impact)**: "is it right?" in quant mostly means "is the effect real or luck?". One
 lucky session can ship a losing change; one unlucky one can kill a good one.
@@ -122,6 +122,11 @@ How many would we need for this effect?"
 **Gap hunt**: engine estimates or workflow verdicts made from a sample too small for the
 effect they claim.
 **Cross-links**: MM Level 14 (Statistical Validation — points here for method).
+**Done 2026-11-15** (6-step format): all topics above + the A/B design foundations pulled in
+at the learner's request — the 6 ingredients, DiD / crossover / switchback, carry-over and
+washout, noise vs bias, random order, A/A and balance check, offline replay vs live,
+guardrails (money/hour, tier volume), pre-registration. Gaps: engine QRE-L2-G1/G2, delivery
+WG2.1–WG2.2 (fugu-dev `165f7d89c`).
 
 ## Level 3 — Cheap, Decisive Experiments
 
@@ -135,6 +140,11 @@ artifact" (GH#109).
 - Minimum detectable effect and power in plain words (links Level 2's fills-needed)
 - Running many tests at once: the "many tests" trap and how to correct for it
 - Confounders: regime, coin, time of day, latency; ablation (which part caused it)
+
+**Already taught in Level 2 (skip, recap in one line):** pre-registration, control / one
+change, concurrent A/B, switchback / crossover / DiD, random order, washout, A/A, guardrails.
+Level 3 focus = the cost ladder, minimum detectable effect and power, the many-tests trap,
+confounders beyond coin and time, ablation.
 
 **KCMME example**: grade the current HTX pre-registered test agenda (11 tests with controls
 and kill lines) — which tests are sized to decide, which can only say "continue".
