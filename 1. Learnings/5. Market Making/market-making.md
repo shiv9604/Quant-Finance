@@ -5049,3 +5049,127 @@ Changing a bug fix AND a parameter improvement in the same iteration makes it im
 | **Professional standard** | Walk-forward + DSR + attribution delta (did the target component actually improve?) |
 
 ---
+
+---
+
+## Market Making as a Service (Token Projects)
+
+> Started 2026-11-23. Roadmap: `learning-roadmap/mm-as-a-service-roadmap.md`.
+> How a market maker serves token projects on retainer (and other models), end to end:
+> listing mechanics, commercial models, deal terms, operations, legal, pricing,
+> pipeline, and sales/negotiation. Each layer is written here only after it is taught
+> and confirmed (template Step 5).
+
+### MMaaS Layer 0 — New Token Listing Mechanics
+*(Taught 2026-11-23. Running example: Kestrel Network, KSTL — fictional; see the roadmap file.)*
+
+**Venue names used everywhere in this course:** **CEX** (Binance, HTX, MEXC: the exchange holds funds, order book) ·
+**order-book DEX** (Hyperliquid, dYdX: own wallet, on-chain, order book, quote exactly like a CEX) ·
+**pool DEX** (Uniswap, Raydium, Orca, Meteora; what a Phantom swap uses: no order book, price = ratio of the two sides in the pool).
+Quick test: is there an order book with bids and asks? Yes → CEX or order-book DEX. No → pool DEX.
+
+#### 1. What It Is
+
+Everything we did before quoted around a mid price that already existed. A brand-new token has no market:
+the order book is empty, there is no Binance price to follow, and it trades on **spot** (real tokens), not perps.
+Layer 0 is how the first price comes about and how a market maker gets a market started.
+
+#### 2. Simple Example (Kestrel launch day)
+
+- Kestrel: 1B total supply, 100M tradeable on day one. Seed $0.02, private $0.05, public sale $0.08.
+- **Listing agreement** with a mid-tier CEX: trading opens 3 March 10:00; Kestrel must appoint a market maker and keep targets
+  (typical ranges, unpublished and deal-by-deal: spread ≤ ~1–2% on mid-tier venues, $10k–$100k+ depth within ±2% of mid,
+  95–99.5% uptime). Missing them → warning label (MEXC/Bitget "ST"), then delisting. The project answers to the exchange, not us.
+- **1 March TGE:** token created. Uniswap pool seeded with 1M KSTL + $100k USDC → price = 100k ÷ 1M = **$0.10**.
+  Pre-market bets had traded at $0.12, so demand was strong; two days of buying push the pool to **$0.115**.
+- **Deposit window (1–3 March):** anyone holding KSTL can deposit, but cannot trade yet. Kestrel moves the **inventory loan**
+  (2M KSTL + $200k USDT) into the account we trade (usually Kestrel's own account with trade-only API keys).
+- **Prep before 10:00:** verify both balances; take the **freshest live price** (pool $0.115, not the stale $0.10 or $0.12);
+  agree it with Kestrel (push back if they want $0.13, because arbitrage traders would buy in the pool and sell to us);
+  stage bids $0.114 / asks $0.116 (about 1.7%, slightly wide while uncertain).
+- **10:00, seeding:** the book is empty; our orders are the market.
+- **10:00–10:05, price discovery:** buyers take 300k KSTL off our asks, which means the price is too low → we step quotes up and thin the ask size;
+  buying and selling balance at about **$0.12**.
+- **10:05, two venues:** CEX $0.12, pool $0.115 → arbitrage traders buy where it is cheaper and sell where it is dearer until both meet.
+  Better that we watch the pool constantly and run the arbitrage ourselves (it also refills the tokens we sold).
+- **Rest of the day:** tighten under 1% and report spread, depth, uptime, volume and inventory to Kestrel.
+
+#### 3. How It Works (Simple → Sophisticated)
+
+**Basic (fails):** switch the perps engine on at 10:00. It finds no mid price, no leader to follow, and no tokens to sell (spot).
+
+**Intermediate:** quote around the price the project asks for. Fails if that price differs from the live pool price,
+because arbitrage traders pick us off and Kestrel's inventory pays for it.
+
+**Professional:** build the opening price from evidence, strongest first: (1) a live price that already exists (pool DEX,
+or an order-book DEX) → (2) pre-market → (3) last sale price → (4) comparable FDVs → (5) the project's wish (an opinion, not evidence).
+If an opening auction runs, the crowd sets the opening price and that becomes the anchor. After the open, **our own trades
+are the price leader** (buyers taking our asks → move up; sellers hitting our bids → move down), checked continuously against the pool.
+Quote wider and smaller while uncertain, then tighten to the target once the flow has shown where the price is.
+
+**Already-listed tokens (most retainer clients):** no seeding and no launch-day discovery. A mid price exists and we join it,
+which is close to today's engine. It is still spot (inventory loan needed), and a thin book's mid can be noisy,
+so check it against the token's other venues.
+
+**Why the inventory loan exists (perps vs spot):** on a perp, USDT collateral lets you sell (go short) without owning the coin.
+On spot, the buyer receives real tokens, so to place asks we must hold KSTL. Buying it ourselves isn't possible before launch,
+is a large directional risk, and would push the price, so the project lends it.
+
+**How the goal changes vs today's book:**
+
+| | Own book today (perps, rebates) | Retainer (token client) |
+|---|---|---|
+| Revenue | Spread + rebates; trading profit is the business | Monthly fee; trading PnL secondary, keep losses small |
+| Objective | Max volume at min cost | Meet spread / depth / uptime targets |
+| Inventory | Stay flat | Hold a balanced band (e.g. 40–60% tokens by value), on purpose |
+| Toxic market | Widen or pull quotes | Must stay quoted; absorb selling gracefully |
+| Assets | We pick profitable ones | The client's token, good day or bad |
+
+#### 4. Professional Standard
+
+Opening price built from layered live evidence, never the client's wish; pre-open checklist (inventory verified, reference agreed,
+staged wide orders); fair value learned from our own fills plus every live venue (pool DEX price included); constant cross-venue
+monitoring with in-house arbitrage; staged spread tightening to the contracted target; daily target reporting to the client.
+
+#### 5. Summary
+
+| Price source | What it tells us | What it misses |
+|---|---|---|
+| Project's wish | What the project hopes for | Not evidence; costly if wrong |
+| Pre-market | Real money before launch | Stale once the token is live |
+| Pool DEX price | A live price | Thin: one trade swings it |
+| Our own trades | Real-time demand on our market | Slow at first; little data |
+| All combined | Best fair value | Needs the engine to watch everything at once |
+
+| | |
+|---|---|
+| **What it is** | How a new token gets its first price and how a market maker starts its market |
+| **Why it matters** | Our engine assumes an existing mid and a leader; at a launch neither exists |
+| **Professional standard** | Evidence-ranked opening price, seed and discover from own flow, keep every venue aligned |
+
+**Terms covered (Step 1):** TGE · listing agreement · deposit window / trading open · seeding the order book · reference price ·
+call auction · price discovery · FDV / market cap · pre-market trading · inventory loan · price leader · new vs already-listed.
+
+### MMaaS Layer 1 — Why Projects Pay for Market Making
+*(Pending)*
+
+### MMaaS Layer 2 — Commercial Models
+*(Pending)*
+
+### MMaaS Layer 3 — Anatomy of a Deal (Term Sheet)
+*(Pending)*
+
+### MMaaS Layer 4 — Operations of a Client Book
+*(Pending)*
+
+### MMaaS Layer 5 — Legal, Compliance and Ethics
+*(Pending)*
+
+### MMaaS Layer 6 — Pricing and Unit Economics
+*(Pending)*
+
+### MMaaS Layer 7 — Market and Pipeline
+*(Pending)*
+
+### MMaaS Layer 8 — Sales Conversation and Negotiation
+*(Pending)*
