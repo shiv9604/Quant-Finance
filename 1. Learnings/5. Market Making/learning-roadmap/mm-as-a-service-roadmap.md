@@ -38,6 +38,8 @@ same numbers. Extend it as layers need (never change existing facts).
 - Kosashi hired on retainer; Kestrel lends 2M KSTL + $200k USDT into the account we run.
 - Opening quotes: bids $0.098 / asks $0.102 around reference price $0.10.
 
+**Heron (HRN)**, fictional comparison client (Layer 2+): same size as Kestrel but on the **loan + call option** model: lends 2M HRN at $0.12, call option on those 2M at strike $0.15, 12-month tenor, no fee. Kestrel = retainer at $10k/month (illustrative). Assume $1k/month trading profit for both when comparing.
+
 ---
 
 ## Layer 0 — New Token Listing Mechanics (technical foundation) ✅ Done 2026-11-23
