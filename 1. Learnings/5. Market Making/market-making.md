@@ -5151,7 +5151,95 @@ monitoring with in-house arbitrage; staged spread tightening to the contracted t
 call auction · price discovery · FDV / market cap · pre-market trading · inventory loan · price leader · new vs already-listed.
 
 ### MMaaS Layer 1 — Why Projects Pay for Market Making
-*(Pending)*
+*(Taught 2026-11-23. Running example: Kestrel Network, KSTL.)*
+
+#### 1. What It Is
+
+Why a token project pays a market maker at all: without one, nobody keeps orders in the book, the market
+goes thin, and a downward spiral ends in delisting. The market maker keeps the project listed, keeps its tokens
+worth real money, and makes growth possible.
+
+**Background first: why anyone holds the token.** Kestrel is a blockchain file-storage service paid in KSTL.
+People buy KSTL to (1) **use** it (pay for storage, like arcade tokens), (2) **earn** from it: staking means locking
+tokens as a deposit; operators run the storage machines (franchise picture), passive holders delegate to them, and both get
+a share of the fees **customers** pay (dividend-like, varies with revenue, not fixed; staking rewards paid by printing new tokens
+are not real income), (3) **vote** (one token = one vote, like shareholders), (4) **bet on growth**, honestly the biggest driver in crypto.
+A project needs its token tradable because its product runs on it and because the token is how it raises money.
+A token nobody can trade is like gold coins with no shop to sell them to: rich on paper, worthless in practice.
+
+**Two pots, never mixed:** the **inventory loan** (2M KSTL + $200k USDT lent to us, only for quoting, returned at the end; its USDT
+*is* our bids, so withdrawing it breaks the depth target) vs the **treasury** (200M KSTL in Kestrel's own wallet).
+Selling treasury tokens into our bids would be circular (Kestrel paying itself). **Real money only comes from outside buyers**:
+OTC to a fund (most common for size), or we sell to outside buyers through our asks and Kestrel withdraws only the surplus USDT.
+Sell only as fast as real outside demand can absorb.
+
+#### 2. Simple Example — the spiral (Kestrel, six months after launch, market maker quits)
+
+| Week | What happens |
+|---|---|
+| 1 | Spread 1% → 5%, depth $20k → $800 |
+| 2 | A fund tries $10k, sees 15% slippage, walks away; retail stops trading |
+| 3 | Daily volume $300k → $20k; bad CoinGecko liquidity score |
+| 4 | Exchange applies an **ST (Special Treatment)** warning label; holders panic-sell; price $0.12 → $0.07 |
+| 8 | **Delisted** |
+
+Root cause: **nobody kept orders in the book.** Cost: treasury −40%, angry investors, users can't easily buy KSTL, next raise much harder.
+
+With a market maker the loop runs upward: orders always in the book → calm trading (a $10k buy ≈1% slippage) → traders stay →
+volume and scores rise → exchange earns fees, no label, path to a bigger listing → investors can exit any day, so don't panic.
+
+#### 3. How It Works (Simple → Sophisticated)
+
+**Basic (wrong):** "a good product trades by itself, no market maker needed." Ignores the spiral.
+
+**Intermediate:** hire a market maker to hit the exchange's numbers. Misses that three groups are watching, each a different angle.
+
+**Professional:** deliver and *prove* all four measures, to all three audiences:
+
+| Who watches | What they look at | What they want |
+|---|---|---|
+| Exchange | Spread, depth, volume (listing-agreement targets) | Fees, no complaints |
+| Project (client) | Our KPI report + price stability | Stay listed, keep value, grow |
+| Investors / traders | CoinGecko / CoinMarketCap markets tab (spread, ±2% depth, trust/liquidity score), own slippage | Trade calmly |
+
+**Why exchanges delist thin tokens:** no fee income but ongoing cost (wallets, support, security); users hurt by slippage and blame the
+exchange; thin books are easy to manipulate (regulator attention); dead tokens make the exchange look bad. Like a supermarket clearing
+products that don't sell. MEXC/Bitget run ST labels; Bitget removes one after 30 consecutive normal days.
+
+**Terms:**
+- **Thin vs deep:** about $600 vs about $20k of orders near the price.
+- **Slippage / price impact:** your own order moving the price against you. It also hurts the *project* (investors stay away, the chart looks like a pump-and-dump, the project can't sell treasury).
+- **KPI (Key Performance Indicator)** = the scoreboard number. **SLA (Service Level Agreement)** = the signed deal about it: the target plus the penalty (pizza: delivery time = KPI; "30 minutes or free" = SLA). A KPI without a remedy is just a wish.
+- **Depth band ±2%:** only orders within 2% of mid count (shelf, not warehouse). Equivalent: a $20k market order moves the price ≤ 2%. Stops fake depth parked far away.
+- **Uptime:** % of time quotes are live *and* on target. 95% ≈ 36 h/month allowed down. Exclusions (exchange maintenance, exchange freezes, force majeure) must be written into the contract. Market: 95% floor, 98–99.5% competitive. Bonus tiers (e.g. fee cut < 95%, +10–20% > 98%) are illustrative only, no reliable industry figures found.
+- **Organic volume vs wash trading:** real trades between different owners vs trading with yourself (one account sells inside the spread, a linked account buys it; nothing changes hands but fees; many accounts to dodge self-trade prevention). Detected by trades inside the gap, no depth change, linked funding. Illegal manipulation; Oct 2024 US enforcement against crypto "market makers" selling it. **Never.** A request for fake volume is a red flag.
+- **ST label / delisting:** warning badge, then removal.
+- **Data sites (CoinGecko, CoinMarketCap):** public scoreboards with per-exchange spread, ±2% depth and a trust/liquidity score. Clients can verify us there, and they are a free lead-finder (wide spread + tiny depth = a project that needs a market maker).
+
+**Getting paid (counterparty risk):** projects pay from money raised (rounds + treasury), not revenue. Before signing: who invested,
+treasury size (public wallets), is the team and product alive, is the token already dying. In the contract: fee in advance, in stablecoins,
+right to deduct unpaid fees from the loan's USDT, stop quoting and return inventory on non-payment.
+
+#### 4. Professional Standard
+
+Sell the outcome (survival, value, growth), not "a spread number"; contract all four measures with explicit remedies and exclusions;
+report to all three audiences; prove organic volume; screen client solvency and get paid in advance in stablecoins.
+
+#### 5. Summary
+
+| Measure | What it shows | What it misses |
+|---|---|---|
+| Spread | Cost of a small trade | Whether a big trade fits |
+| Depth ±2% | Whether a big trade fits | Whether we're there all day |
+| Uptime | Whether we're there all day | Whether the trading is real |
+| Volume | Activity | Can be faked, so never proof alone |
+| All four together | A genuinely healthy market | — |
+
+| | |
+|---|---|
+| **What it is** | Why projects pay market makers |
+| **Why it matters** | A thin market spirals to delisting; we sell survival, value and growth |
+| **Professional standard** | All four measures contracted with remedies, reported to every audience, organic only |
 
 ### MMaaS Layer 2 — Commercial Models
 *(Pending)*

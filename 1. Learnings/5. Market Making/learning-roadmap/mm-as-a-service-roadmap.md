@@ -28,6 +28,8 @@ One fictional project, followed through its whole lifecycle, so every layer uses
 same numbers. Extend it as layers need (never change existing facts).
 
 **Kestrel Network (KSTL)**, fictional.
+- Product: blockchain file-storage service; users pay storage fees in KSTL; stakers earn a share of fees; holders vote.
+- Treasury: 200M KSTL held by the project (separate from the inventory loan), sold slowly / OTC to fund operations.
 - Total supply 1,000,000,000 KSTL. Day-one circulating 100M (10%).
 - Seed round $0.02, private round $0.05, public sale $0.08 (raised $2M).
 - TGE 1 March. Deposits open on the exchange 1 March; trading opens 3 March 10:00.
@@ -55,10 +57,10 @@ quoting starts.
 - [x] Already-listed tokens (most retainer clients): how onboarding differs
 - [x] Core question: **with no Binance-style price leader, what is our fair value on day one?**
 
-## Layer 1 — Why Projects Pay for Market Making
-- [ ] Exchange listing and continued-listing requirements (spread, depth, uptime)
-- [ ] What thin markets cost a project (slippage, price gaps, lost investor trust, delisting risk)
-- [ ] KPIs: spread, depth at ±2%, uptime, volume; how exchanges and projects measure them
+## Layer 1 — Why Projects Pay for Market Making ✅ Done 2026-11-23
+- [x] Exchange listing and continued-listing requirements (spread, depth, uptime)
+- [x] What thin markets cost a project (slippage, price gaps, lost investor trust, delisting risk)
+- [x] KPIs: spread, depth at ±2%, uptime, volume; how exchanges and projects measure them
 
 ## Layer 2 — Commercial Models
 - [ ] Retainer (fixed monthly fee + KPI SLA, client lends inventory)

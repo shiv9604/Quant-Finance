@@ -8,7 +8,7 @@ Read it fully before responding to the user.
 > **UPDATE 2026-11-23:** a third course started: **Market Making as a Service** (retainer
 > clients / token projects), roadmap `learning-roadmap/mm-as-a-service-roadmap.md`, content in
 > the `## Market Making as a Service (Token Projects)` section of market-making.md. Same template.
-> Current: **MMaaS Layer 0 DONE 2026-11-23** (taught, confirmed, KCMME check, doc written; gaps in KCMME `learning/gaps` → `docs/architecture/gaps/retainer-mm-gaps.md`). **NEXT = MMaaS Layer 1 — Why Projects Pay for Market Making, Step 1 terminology.**
+> Current: **MMaaS Layers 0–1 DONE 2026-11-23** (gaps: KCMME `learning/gaps` → `retainer-mm-gaps.md`). **NEXT = MMaaS Layer 2 — Commercial Models, Step 1 terminology.**
 > Format the PO asked for: ONE term at a time, very simple, a small quick-check question, move on only after the answer shows it's clear. Use the Kestrel running example + venue naming (CEX / order-book DEX / pool DEX) from the roadmap file.
 
 > **UPDATE 2026-11-13 (read first):** Lifetime Levels 0–13 are taught (last: Level 13
