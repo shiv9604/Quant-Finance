@@ -64,11 +64,11 @@ quoting starts.
 - [x] What thin markets cost a project (slippage, price gaps, lost investor trust, delisting risk)
 - [x] KPIs: spread, depth at ±2%, uptime, volume; how exchanges and projects measure them
 
-## Layer 2 — Commercial Models
-- [ ] Retainer (fixed monthly fee + KPI SLA, client lends inventory)
-- [ ] Loan + call option model, and its conflict of interest
-- [ ] Hybrids, performance fees, profit share
-- [ ] Which model fits a new firm, and why
+## Layer 2 — Commercial Models ✅ Done 2026-11-24
+- [x] Retainer (fixed monthly fee + KPI SLA, client lends inventory)
+- [x] Loan + call option model, and its conflict of interest
+- [x] Hybrids, performance fees, profit share
+- [x] Which model fits a new firm, and why
 
 ## Layer 3 — Anatomy of a Deal (Term Sheet)
 - [ ] Inventory loan size, tenor, return terms

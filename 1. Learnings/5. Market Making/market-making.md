@@ -5242,7 +5242,89 @@ report to all three audiences; prove organic volume; screen client solvency and 
 | **Professional standard** | All four measures contracted with remedies, reported to every audience, organic only |
 
 ### MMaaS Layer 2 — Commercial Models
-*(Pending)*
+*(Taught 2026-11-24. Clients: Kestrel = retainer, Heron = loan + call option.)*
+
+#### 1. What It Is
+
+How a market maker gets paid by a token project. A project can pay in only two currencies: **cash** (retainer)
+or **its own tokens** (loan + call option). **How you are paid decides what you care about**: cash for market quality
+keeps us focused on a healthy market; tokens make us want the price up and force us to sell the client's tokens to get real money.
+
+**Terms:**
+- **Retainer:** fixed monthly fee for an ongoing service (security guard's salary). Kestrel: $10k/month (illustrative; one guide: $7.5k–$20k for a token under $50M market cap on 2–3 venues, unverified). Paid whatever the price does.
+- **Call option:** the right, not the duty, to buy later at a price fixed today (a friend's promise: buy the bike for ₹50k any time this year; worth ₹80k → +₹30k; worth ₹30k → don't buy, lose nothing). Pays only if the price rises.
+- **Strike price:** the fixed price in the promise ($0.15). The higher the strike vs today's price, the less likely it pays.
+- **Loan + option model:** the project lends tokens and grants a call option on them, with no (or a tiny) fee. At expiry: price above strike → keep the tokens and pay strike × quantity; below → return the tokens and get nothing from the option.
+- **Tenor:** contract length. 6–12 months common (single source); option deals usually 12 months; the project usually gets the shorter exit notice; we suggest 30 days for the client (our suggestion, not an industry figure).
+- **Performance fee:** a bonus for beating the KPIs. Tie it to market quality (uptime, spread, depth), never to price.
+- **PnL ownership:** who keeps trading profit/loss must be written down, and losses too. It usually follows whose account holds the inventory (client account → client keeps it → higher retainer; MM account under a loan → MM keeps it).
+- **Conflict of interest:** being paid in a way that tempts you to hurt your client (taxi driver paid per km takes the long route).
+
+#### 2. Simple Example — same work, two clients, 12 months (assume $1k/month trading profit for both)
+
+| Price at year end | Kestrel (retainer $10k/mo) | Heron (loan 2M HRN, option at $0.15, no fee) |
+|---|---|---|
+| Up to $0.25 | $120k + $12k = **$132k** | (0.25−0.15)×2M = $200k + $12k = **$212k** |
+| Flat $0.12 | **$132k** | option worthless → **$12k** |
+| Down $0.06 | **$132k** | **$12k** |
+
+Retainer = the same money every month. Option = a lottery ticket paid only at year end. And cashing out the "win" is hard: pay $300k
+strike in cash, then sell 2M tokens into a book holding about $20k of bids near the price, which crashes the market we were hired to protect.
+Some market makers sell the borrowed tokens gradually during the year, i.e. sell the client's tokens into the client's own market. That conflict
+is why the model has a bad reputation. **An option on a token that never grows is just a discount we gave away.**
+
+#### 3. How It Works (Simple → Sophisticated)
+
+**Naive:** accept any deal to win the client, usually the founder's "no cash, big option" offer → no steady income, a lottery ticket, conflict and reputation risk.
+
+**Intermediate:** refuse everything but a full retainer → loses good cash-poor projects.
+
+**Professional:** lead with cash for market quality; flex the *shape*, not the principle:
+
+| Client situation | Offer |
+|---|---|
+| Has cash | Full retainer |
+| Good project, little cash | **Cash floor + small option swap** (hybrid; hybrids are common in practice) |
+| Nervous new client | Starter price, rising after ~3 months |
+| Small budget | Smaller scope (fewer venues / lower targets) |
+| No cash, options only | Decline or counter with the hybrid |
+| Wants fake volume / price pumping | Walk away |
+
+**Cash floor + option swap (founder's principle, 2026-11-24):** a non-negotiable cash floor (e.g. $7k/month) that alone covers cost-to-serve plus margin;
+above it, the client may pay part (e.g. up to $3k/month) in call options. **Options are valued at $0 in planning**: pure upside, never relied on.
+To refine in Layer 6: derive the floor from real costs; size options at about 2–3× the forgone cash if the project hits a realistic target; options
+earned month by month (keep only what's earned on early exit). Judge the odds before taking even a small option: real users/revenue, backers,
+team, upcoming unlocks, valuation vs peers.
+
+**Deal mechanics (retainer, clean setup):** the client opens its own exchange sub-account and deposits tokens + USDT (they stay the client's);
+creates an API key that can trade, cannot withdraw, and is locked to our server IPs; we trade through it; the client watches live and can revoke
+any time. Because we cannot withdraw, **we cannot deduct fees from client inventory**, so protection = fee in advance (a quarter upfront for new
+clients) or a security deposit. Holding or managing client crypto can be a licensed activity in some places (custody / acting for clients); the
+client-account setup keeps us closer to a trading service provider than a custodian. Get legal advice per country (Layer 5).
+
+**What competitors do:** large firms do not publish terms. Guides: both models common, hybrids common; which is cheaper for the project depends on
+price/volatility (one example: options beat a $20k/month retainer for a calm token but cost about 3× for a very volatile one). Figures from advisory/vendor sites; illustrative.
+
+#### 4. Professional Standard — Kosashi default offer
+
+Monthly retainer in stablecoins, paid in advance · KPIs (spread, ±2% depth, uptime) with a fee cut for misses and optional quality bonus ·
+trading in the client's own account via a trade-only key, client keeps assets and trading PnL · 6–12 months, 30 days' client notice ·
+cash floor + small option swap for cash-poor clients · never paid for price movement.
+
+#### 5. Summary
+
+| Model | What it gets right | What it misses |
+|---|---|---|
+| Retainer | Steady income, no conflict, client keeps control | Hard for cash-poor projects |
+| Loan + option | No cash from the project | Our pay is a lottery; conflict; must dump tokens to cash out |
+| Hybrid (cash floor + option swap) | Bills covered, small upside, flexible | Option sizing needs care |
+| Trading PnL | Extra income | Who keeps it (and who pays losses) must be written down |
+
+| | |
+|---|---|
+| **What it is** | How market makers get paid: cash retainer, token loan + options, or a hybrid |
+| **Why it matters** | How you're paid decides what you care about |
+| **Professional standard** | Cash for market quality; options only on top of a cash floor, valued at zero |
 
 ### MMaaS Layer 3 — Anatomy of a Deal (Term Sheet)
 *(Pending)*
