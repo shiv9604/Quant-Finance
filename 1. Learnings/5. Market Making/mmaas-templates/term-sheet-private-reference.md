@@ -13,6 +13,8 @@ Built in MMaaS Layer 3 (2026-11-25) on the Kestrel running example. Numbers are 
 | 5 | Exclusions | Exchange outages or maintenance, exchange freezes, client inventory shortfalls, force majeure | — | Removing exclusions |
 | 6 | Account and inventory | Client-owned sub-account; client deposits tokens + USDT before the start; trade-only API key, withdrawals off, IP-locked | — | Withdraw permission on our key (custody risk) |
 | 7 | Inventory changes | Client gives 48 h notice before adding or removing inventory; unannounced withdrawal = client's responsibility | Shorter notice (24 h) | No notice at all |
+| 7b | Inventory band & top-ups | We notify the client when inventory leaves the agreed band (e.g. tokens outside 45–65% of value); client tops up within 24–48 h. If not, KPI misses on the empty side = client-inventory exclusion. | Longer top-up window | We sell the client's tokens without approval |
+| 7c | Event notice | Client gives advance notice of planned events that move flow: token unlocks, listings, launches, major announcements, treasury sales. We use it only to prepare liquidity (top-ups, depth), never to trade for our own benefit. | — | Trading on the client's non-public info (insider risk) |
 | 8 | Fee | Monthly retainer in USDT, paid before each month starts, no refunds | Paid pilot or split first month only if the deal needs it | Work before payment |
 | 9 | Performance | NOT in the template. No penalty offered upfront. | If asked: a penalty only alongside a matching uptime bonus (symmetric) | One-sided penalties; anything tied to price |
 | 10 | Trading PnL | Belongs to the client (its account); our income = pure retainer | — | — (open item: trading-loss guardrail, Layer 4) |
