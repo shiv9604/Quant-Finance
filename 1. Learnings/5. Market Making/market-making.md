@@ -5387,7 +5387,79 @@ Order of play: offering sheet → template term sheet → concede small things f
 | **Professional standard** | Two-sheet system: sell with positives, start from defaults, concede for value, hold red lines |
 
 ### MMaaS Layer 4 — Operations of a Client Book
-*(Pending)*
+*(Taught 2026-11-25. Checklist: `mmaas-templates/client-onboarding-checklist.md`.)*
+
+#### 0. The line between the two businesses (never mix them)
+
+**Prop market making** (today: perps, rebates) = a trader renting a stall for his own profit.
+**Client / designated market making** (retainer) = a shopkeeper hired to keep someone else's shop open and stocked, for a salary.
+
+| | Prop | Client / retainer |
+|---|---|---|
+| Customer | Nobody (ourselves) | The token project |
+| Whose money | Ours | Client's inventory, in its account |
+| Earn from | Spread + maker rebates | Monthly fee |
+| Success | Profit per $1k traded | KPIs met (spread, depth, uptime) |
+| Inventory | Stay flat | Hold a band of tokens + USDT on purpose |
+| Asset | We choose liquid, profitable coins | Client's token, thin or not |
+| Market | Mostly perps (USDT collateral, can short) | Mostly spot (must hold real tokens) |
+| Danger | Widen / pull quotes | Stay quoted within targets; absorb the flow |
+| Trading losses | Ours | Client's (capped by guardrail, reported) |
+| Shutdown | Flatten | Cancel orders only; never touch inventory |
+| Price leader | Follow Binance | Often we are the leader |
+| Failure | We lose money | Client gets ST label / delisted; we lose the client |
+| Engine priority | Avoid bad fills | Always be there |
+
+For clients: "For our own book we trade for profit; for you we're a service provider: you own the inventory and the trading results,
+we're paid a fixed fee to keep your market healthy, and we earn nothing from your price." Rebates on a client book land in the client's
+account and only reduce the bleed (often small or zero on mid-tier spot; ask about exchange MM programmes). **Trap:** prop habits on a client book.
+
+#### 1. Terms
+
+- **Inventory band:** keep tokens within e.g. 40–70% (template 45–65%) of total value so both sides can always be quoted (gold shop needs gold *and* cash).
+  80% tokens → **bid side at risk** (little USDT to buy with).
+- **Inventory drift:** one-sided flow slides the mix (55% → 65% → 72% → 80% over 3 days of selling). Normal on a client book; we **manage** it, never dump it.
+- **Rebalancing:** refill the empty side: (1) client tops up (main), (2) flow turns, (3) planned slow sale with client approval. Client owns the inventory, so the client decides;
+  we warn early. Term-sheet clause: we notify when outside the band, client tops up within 24–48 h; if not, misses on the empty side = client-inventory exclusion.
+- **Trading-loss guardrail (three buckets):**
+  1. **Price loss** on the client's *original* tokens (market fell): nobody's fault, not measured.
+  2. **Inventory loss** on the *extra* tokens we accumulated while absorbing flow (10,000 extra × $0.02 = −$200).
+  3. **Spread result** per trade (spread captured − bad fills − fees + rebates).
+  **Trading result = 2 + 3**, measured vs "just hold the starting mix". It belongs to the client. Guardrail (illustrative): < 1% normal, 1–2% warn, > 2% **pause and agree** (never flatten).
+  Options at the guardrail: slow approved sale, client top-up, smaller ladder (still at minimum KPIs), hedge on a perp if one exists (rare, client-approved).
+  **Why never flatten:** dumping 1.5M tokens into ~$15k of bids crashes the price (≈ −$52k vs −$30k by holding), it's the client's directional decision, and it destroys the job.
+- **Skew (leaning quotes):** Rule 1, the liquidity guarantee, never breaks: both sides present, full depth, within the spread target. Rule 2, the skew: a tiny shift of *both* quotes
+  inside Rule 1 (e.g. $0.1194/$0.1206 → $0.1193/$0.1205 when token-heavy: same spread, same depth) so buyers come to us slightly more often and the mix drifts back.
+  Small, gradual, never big enough to push the market price (manipulation line). Apple shop selling surplus a bit cheaper, both doors open.
+- **Quote ladder:** several rungs within ±2% (e.g. $3k at −0.5%, $4k at −1%, $4k at −1.5%, $4k at −2% = $15k). Closest rung = spread; all rungs = depth; a big seller eats rung by rung, so the price steps down gently
+  and we buy cheaper as it falls. One big order empties the side in one hit.
+- **Venue coverage:** we can only serve venues we're connected to; small tokens list on mid-tier spot (MEXC, Gate, Bitget, KuCoin, BingX, HTX) + pool DEXs. Integrate the client's venues as part of onboarding, test each spot API first.
+- **KPI monitoring and alerts:** check client KPIs every 10 s; page a person on what the client cares about (quotes present ≤ 1 min; spread / depth breaches ≥ 5 min; inventory band; guardrail; connection / exchange status). "The server is running" is not enough.
+- **Event calendar:** unlocks, launches, listings, maintenance. Prepare days ahead (top-ups, deeper ladder). Term-sheet clause 7c: client gives event notice. **Smooth price moves, never hold a price** (price support = manipulation risk).
+  Advance client news is non-public info: use it only to prepare liquidity, never to trade for ourselves.
+
+#### 2. Simple Example — a month running Kestrel's book
+
+- **Onboarding:** connect + test spot venues → sub-account + trade-only key, verify inventory, snapshot → client mode (no flatten, STP on) → band + top-up rule → ladder → guardrail → alerts → event calendar → first fee received → go live, watch 48 h.
+- **Unlock week (50M KSTL):** Thursday: Kestrel tops up $150k USDT (2M KSTL + $350k → 41% tokens, below band on purpose); bid ladder $15k → $40k. Monday: we absorb 1.5M KSTL (~$165k);
+  price slides $0.12 → $0.105 in steps (vs a possible 30–40% crash); no KPI alerts. After: 3.5M KSTL + $185k (~66% tokens), trading result −0.8% (< 1%). Buyers return; if still heavy, Kestrel chooses a top-up or an approved slow sale.
+- **Surprises:** exchange API drops (38 min): cancel, never flatten, log the exclusion, reconnect + reconcile, resume. Our server crashes: standby takes over in about 1 minute.
+- **Monthly report:** uptime A 98.6% / B 97.9% (excl. maintenance), spread 0.7% / 1.1%, depth on target 96% of the time, $4.2M organic volume, inventory vs start, trading result −0.8%, events handled.
+
+#### 3. Professional Standard
+
+Onboard by checklist; hold an agreed band and manage drift with small skew plus client top-ups; ladder depth across ±2%; guardrail on trading result only, which pauses and asks, never flattens;
+alert on client KPIs, not process health; prepare for calendar events; prove it all in the monthly report.
+
+#### 4. Summary
+
+| Situation | Prop habit (wrong here) | Client-book habit (right) |
+|---|---|---|
+| One-sided flow | Flatten fast | Skew, then rebalance with the client |
+| Danger | Pull quotes | Stay quoted, absorb, smooth |
+| Shutdown | Flatten | Cancel only |
+| Known event | React on the day | Prepare days before |
+| Success | Profit | KPIs + low bleed + clear report |
 
 ### MMaaS Layer 5 — Legal, Compliance and Ethics
 *(Pending)*

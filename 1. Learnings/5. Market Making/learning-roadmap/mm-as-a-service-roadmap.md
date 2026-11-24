@@ -76,11 +76,11 @@ quoting starts.
 - [x] Account ownership (client sub-accounts + API keys vs MM accounts), custody
 - [x] Fees, termination, clawbacks, exclusivity, PnL ownership
 
-## Layer 4 — Operations of a Client Book
-- [ ] Spot, single-asset, thin books vs our perps-on-majors setup
-- [ ] Inventory management when the client owns the inventory
-- [ ] KPI monitoring and client reporting
-- [ ] Venue coverage (where tokens actually list)
+## Layer 4 — Operations of a Client Book ✅ Done 2026-11-25
+- [x] Spot, single-asset, thin books vs our perps-on-majors setup
+- [x] Inventory management when the client owns the inventory
+- [x] KPI monitoring and client reporting
+- [x] Venue coverage (where tokens actually list)
 
 ## Layer 5 — Legal, Compliance and Ethics
 - [ ] Legitimate market making vs wash trading / manipulation
