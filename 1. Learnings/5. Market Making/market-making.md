@@ -5327,7 +5327,64 @@ cash floor + small option swap for cash-poor clients · never paid for price mov
 | **Professional standard** | Cash for market quality; options only on top of a cash floor, valued at zero |
 
 ### MMaaS Layer 3 — Anatomy of a Deal (Term Sheet)
-*(Pending)*
+*(Taught 2026-11-25. Templates: `mmaas-templates/term-sheet-private-reference.md` (internal) and `mmaas-templates/offering-sheet.md` (client-facing).)*
+
+#### 1. What It Is
+
+A **term sheet** is the 1–2 page summary of a deal's key points, agreed before lawyers write the full contract
+(like agreeing a flat's price, date and payment on one page first). It is where the negotiation happens, and it settles
+every future argument in advance.
+
+#### 2. Simple Example — why a handshake deal fails
+
+"$10k a month, keep the market healthy" → three months later: "healthy" never defined; was exchange downtime our fault?;
+"refund March, the price crashed"; "we withdrew USDT, but depth is your job"; "we're leaving tomorrow"; "who keeps the trading profit?".
+Each open term becomes a fight.
+
+#### 3. How It Works — the terms
+
+- **Return basis:** at the end, same *quantity* back vs same *value* back. Matters mainly when inventory sits in the MM's account;
+  in our client-account setup nothing physically returns, but the contract still says how the result is measured.
+- **KPI schedule:** exact targets per exchange plus how they are measured. Bigger venues get tighter targets (more traders add depth,
+  stricter listing rules; city market vs village market). **Measured every 10 s, monthly average** = a snapshot every 10 s (about 260k a month);
+  uptime = the share of snapshots that pass (like class attendance).
+- **Reporting cadence:** how often we report and what is in it. Our start: weekly + monthly (continuous internal measurement);
+  the monthly report drives any fee adjustment. Live dashboard / daily summary later.
+- **Account setup and key permissions:** client-owned sub-account, trade-only key, withdrawals off, IP-locked; **client gives notice (e.g. 48 h)
+  before moving inventory**, and an unannounced withdrawal that breaks depth is the client's responsibility.
+- **Payment terms:** monthly in advance, before each month starts, no refunds (we cannot deduct fees from a client account).
+  "Non-payment after 5 days" = the grace period after the due date before *we* may stop. Short is in our favour; 7–10 days is a free concession.
+- **Termination:** *for convenience* (no reason needed; only after the 6-month minimum, 30 days' notice) vs *for cause* (the other side broke the deal:
+  non-payment, an illegal request such as self-trades to boost volume, delisting; a client KPI exit only on a full quarter of misses, internal reference only).
+  **Exit procedure:** written notice → cancel all orders → client revokes the key → final report within 7 days → settle.
+- **Clawback:** the client taking back money already paid if it later proves we didn't earn it (e.g. a bonus based on an erroneous report).
+  Fair version: proven errors or misconduct only, within 60 days, **never linked to price** (price falls come from fundamentals, not us).
+- **Exclusivity:** sole MM on the venues we serve is good for us; competitor restrictions are avoided at the start (goal: win many clients),
+  and accepted only if narrow, time-limited and paid at a premium.
+
+#### 4. Professional Standard — the two-sheet system
+
+| Sheet | Who sees it | Job | Not for |
+|---|---|---|---|
+| Offering sheet | Client, first | Sells the value (positives only) | Committing us |
+| Template term sheet | Client, once interested | Our starting position (the "default" column) | Showing flexibility |
+| Private reference | Only us | Defaults, possible concessions, red lines | Ever leaving our hands |
+
+Order of play: offering sheet → template term sheet → concede small things first → say no to red lines (price-linked pay, fake volume, work before payment).
+**Never give without getting** ("0.8% spread *if* 12-month term"; "third exchange *for* $3k more").
+
+**Founder decisions (2026-11-25):** looser starting targets (main venue ≤ 1% spread, smaller ≤ 1.5%, uptime ≥ 95%); no fee-cut penalty in the template
+(negotiation chip only, and only symmetric with a bonus); trading PnL belongs to the client, so our income is the pure retainer;
+6–12-month contracts with a 6-month minimum; monthly in advance; weekly + monthly reporting; **marketing: "97%+ uptime target", contract floor 95%**
+(99%+ on the website was over-promising: clients read uptime as quotes live *and* on target, and we have no measured record yet).
+
+#### 5. Summary
+
+| | |
+|---|---|
+| **What it is** | The deal's key terms on one page, agreed before the contract |
+| **Why it matters** | Every open term becomes a dispute later |
+| **Professional standard** | Two-sheet system: sell with positives, start from defaults, concede for value, hold red lines |
 
 ### MMaaS Layer 4 — Operations of a Client Book
 *(Pending)*

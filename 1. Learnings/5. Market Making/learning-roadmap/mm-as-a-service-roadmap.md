@@ -70,11 +70,11 @@ quoting starts.
 - [x] Hybrids, performance fees, profit share
 - [x] Which model fits a new firm, and why
 
-## Layer 3 — Anatomy of a Deal (Term Sheet)
-- [ ] Inventory loan size, tenor, return terms
-- [ ] KPIs per venue, reporting cadence, SLA breach consequences
-- [ ] Account ownership (client sub-accounts + API keys vs MM accounts), custody
-- [ ] Fees, termination, clawbacks, exclusivity, PnL ownership
+## Layer 3 — Anatomy of a Deal (Term Sheet) ✅ Done 2026-11-25
+- [x] Inventory loan size, tenor, return terms
+- [x] KPIs per venue, reporting cadence, SLA breach consequences
+- [x] Account ownership (client sub-accounts + API keys vs MM accounts), custody
+- [x] Fees, termination, clawbacks, exclusivity, PnL ownership
 
 ## Layer 4 — Operations of a Client Book
 - [ ] Spot, single-asset, thin books vs our perps-on-majors setup
