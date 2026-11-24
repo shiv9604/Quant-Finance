@@ -10,7 +10,7 @@ What a client gets from Kosashi Capital. This is the positive, client-facing sum
 ## Service levels we commit to
 - Spread kept within the agreed target on each exchange
 - Agreed depth on both sides within 2% of the price
-- At least 95% uptime, measured every 10 seconds
+- A 97%+ uptime target, with at least 95% guaranteed, measured every 10 seconds
 
 ## You stay in control
 - Your tokens and stablecoins stay in your own exchange account
