@@ -27,7 +27,6 @@ Built in MMaaS Layer 3 (2026-11-25) on the Kestrel running example. Numbers are 
 | 16 | Exclusivity | Sole market maker on the venues we serve; NO competitor restrictions | Narrow, named rivals, contract term only, at a premium | Broad or permanent sector bans |
 | 17 | Conduct | Organic trading only; no wash trading; self-trade prevention on; no volume boosting; no price targets | — | Any request to fake volume or move the price → walk away |
 | 18 | Confidentiality | Mutual | — | — |
-| 19 | Law and disputes | To decide with a lawyer (Layer 5) | — | — |
+| 19 | Law and disputes | Singapore law, SIAC arbitration (confirm with lawyer) | Another recognised international centre (DIFC, London, Hong Kong) | Client's ordinary local courts |
 
-Pricing principle (Layer 2, to finalise in Layer 6): cash floor (e.g. $7k/month) covers cost-to-serve plus margin; above it, the client may swap
-part of the fee for call options, valued at $0 in our planning.
+Pricing (finalised Layer 6, 2026-11-27): cash-only retainer per `rate-card.md` (setup $5k; first pair per exchange $5k/month; extra pair $3k/month). No token options or token payments at the start. Only advertised give: setup discount for a 12-month contract.

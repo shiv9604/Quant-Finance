@@ -20,7 +20,7 @@ Founder rule 2026-11-27: list prices stay as above. The one advertised give is a
 
 - Setup fee: may drop to $2,500 for a 12-month contract. Never fully free on a 6-month contract.
 - Volume discount: may offer ~10–20% off the monthly total at 3+ exchanges (keeps us below tier-1 pricing).
-- Token option bonus on top of cash (valued at $0), never instead of cash.
+- No token options or token payments at the start (founder 2026-11-27): cash-only retainer for simplicity. Revisit after the first clients.
 
 ## Introducers
 
