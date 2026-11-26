@@ -5493,7 +5493,45 @@ Exists: engine log + diag JSONL, cancel-reason tags, OTR counters; spot venues b
 - How specific venues implement STP modes and OTR limits (check per venue at onboarding).
 
 ### MMaaS Layer 6 — Pricing and Unit Economics
-*(Pending)*
+*Done 2026-11-27. Rate card: `mmaas-templates/rate-card.md`. Gaps: KCMME `learning/gaps` → `retainer-mm-gaps.md` (Layer 6 section).*
+
+#### Cost to serve
+- **Variable (grows per client/market):** servers near each exchange + standby (~$100–200 each per venue), monitoring, log storage; ~20 h/month of people time per client (KPI watch, on-call, top-ups, events, reports, calls); one-off onboarding (~15 h, KYB, ~$1k legal).
+- **Biggest hidden cost:** a new exchange connector (1–3 weeks). Our engine has no spot venue yet, so early clients are mostly "new exchange".
+- **Not ours:** trading fees/rebates and inventory sit in the client's account; API and market data are free.
+- **Tighter spread / more depth** costs us nothing; it needs more client inventory. Higher uptime and more venues cost us money.
+- **Founder cost base:** ~$4,000/month fixed (founder $2.5k, team ~$1k, servers ~$500) + ~$300–400 per market; plus legal/admin, taxes, off-ramp ~0.5–1%, error reserve, sales/travel.
+
+#### Capital at risk
+Retainer: the client's money in the client's account, so price loss and trading PnL are theirs. Our risk = operational mistakes (cap liability in the contract, keep ~1 month of fees as a reserve). The loan + option model (Heron) does put our capital at risk (we must return borrowed tokens).
+
+#### Margin and break-even
+Margin = (revenue − cost) ÷ revenue; 50% = revenue 2× cost. **Margin comes from the number of clients, not from overcharging one**: fixed cost is shared, each extra client is ~90% profit. One $10k client ≈ 50%, two ≈ 70%, three ≈ 78%. Per market, price ≥ 5× its variable cost.
+
+#### Market rates (public guides, mostly vendor-written: indicative)
+Industry prices **per pair per exchange, with discounts for more pairs**. Mid-tier ~$3–15k/month per exchange; single mid-tier CEX pair with modest KPIs ~$5–10k; multi-venue serious depth $20–50k+; tier-1 ~$30–60k per exchange, sometimes setup fees of $50–100k, or loan + call option (loan ~0.5–2% of supply, 12–24 months, strike slightly above spot). Big setup fees: real onboarding/compliance cost, filter for serious clients, protection against early exit, brand/capacity scarcity, cash upfront.
+
+#### Our rate card (founder decisions)
+- Setup $5,000 per client. First pair on each exchange $5,000/month (no separate integration fee). Extra pair on the same exchange $3,000/month. Premium SLA +20–30%. Min term 6 months.
+- Only advertised give: setup discount for a 12-month contract. Held back: volume discount at 3+ exchanges, traded only for something.
+- **Cash only; no token options or token payments at the start.** Line: "No tokens means no interest in your price, only in your book quality."
+- Positioning: healthy, not premium (low-mid vs per-exchange market rates).
+- Introducers: 5% of fees received, pay-as-paid, first 12 months, written agreement, must disclose they're paid by us.
+
+#### MRR, churn, valuation
+MRR = monthly recurring fees (setup excluded); ARR = MRR × 12. Churn = clients leaving; retention is as important as sales. A retainer book is valued roughly as ARR × a multiple (often ~2–5× for recurring services; rough). Raised by long contracts, many clients, margin, growth, clean record; lowered by churn and **client concentration** (keep any single client below ~30–40% of MRR).
+
+#### Scenario lessons (Lumen: 1 pair × 2 new exchanges + 1 extra pair)
+- Monthly 5k + 5k + 3k = **$13,000**; first invoice **$18,000** (initially slipped by using $2k for the extra pair).
+- Tokens: decline, no price interest.
+- Competitor at $6k: compare like for like (written KPIs, whose account, token loan on the side, reports, per exchange or total?), show the cost of a bad MM, then **cut scope, not price** (start on the main exchange at $5k). Price-only clients churn.
+
+#### Engine check (Step 4)
+`spine` runs several symbols per process (per-symbol asset TOMLs). Gaps: per-market usage metering (Medium), billing statement per client (Medium), rate-limit capacity per account (Low), invoicing/collections/tax (business, Medium).
+
+#### Knowledge gaps to revisit
+- Real server cost per market once spot connectors exist (measure, then re-check the 5× rule).
+- Tax treatment of USDT revenue for the Georgian entity (accountant).
 
 ### MMaaS Layer 7 — Market and Pipeline
 *(Pending)*

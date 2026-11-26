@@ -87,10 +87,10 @@ quoting starts.
 - [x] Enforcement cases against token market makers
 - [x] Client screening, contract jurisdiction, red flags
 
-## Layer 6 — Pricing and Unit Economics
-- [ ] Cost to serve one client; capital at risk
-- [ ] Pricing tiers; who keeps trading PnL
-- [ ] What a retainer book is worth to Kosashi
+## Layer 6 — Pricing and Unit Economics ✅ Done 2026-11-27
+- [x] Cost to serve one client; capital at risk
+- [x] Pricing tiers; who keeps trading PnL
+- [x] What a retainer book is worth to Kosashi
 
 ## Layer 7 — Market and Pipeline
 - [ ] Buyer types (pre-TGE, newly listed, unhappy with current MM)
