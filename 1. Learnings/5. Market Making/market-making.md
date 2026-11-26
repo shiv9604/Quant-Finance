@@ -5462,7 +5462,35 @@ alert on client KPIs, not process health; prepare for calendar events; prove it 
 | Success | Profit | KPIs + low bleed + clear report |
 
 ### MMaaS Layer 5 — Legal, Compliance and Ethics
-*(Pending)*
+*Done 2026-11-26. Policy: `mmaas-templates/compliance-policy.md`. Gaps: KCMME `learning/gaps` → `retainer-mm-gaps.md` (Layer 5 section).*
+
+**The one test.** "If the public knew why we placed this order, would they feel tricked?" If yes, it is manipulation. Legitimate market making creates no signal of its own; it only makes it cheap and easy for real people to trade. Every trick below creates a false signal (fake price, fake volume, fake support, fake chart).
+
+#### Terms
+1. **Market manipulation**: trading to give others a false picture of price, volume or demand. A real seller moving the price while we keep quoting is *not* manipulation. The MM is liable too; "the client asked" is no defence.
+2. **Wash trading**: trading between accounts controlled by the same party to fake volume. Kestrel: A sells 100k KSTL to B at $0.10, B sells back, CoinGecko shows $20k volume, nothing changed hands. Accidental version = self-trade on our own account, which is why STP matters.
+3. **Spoofing / layering**: big orders never meant to fill (e.g. 5M KSTL bid at $0.095), cancelled before the price reaches them; layering = many levels. Difference from our normal cancel/requote = intent; our orders are real sizes we would fill. A 20M wall with 2M inventory can't fill, which is close to proof.
+4. **Pump and dump; price support vs smoothing**: pump (push price, fake signals) then insiders dump. "Hold the price above X before our unlock" = we are the pump, they are the dump. **Support** = defend a number, burn the client's USDT, a lie. **Smoothing** = ladder absorbs shocks, price steps down ($0.10 → ~$0.088) instead of crashing. Rule: smooth price, never hold price.
+5. **Painting the tape / marking the close**: a small trade timed to shape a candle (e.g. a $2k buy at 23:58 turns a red daily candle green). Small money, still a false signal. Client words: "nice green candles".
+6. **Inside information (MNPI)**: material + non-public. Use only to prepare liquidity (capacity, ladder, ask client to top up). The trap: "quietly build up KSTL before the Binance news" = make our bot *buy* from unaware sellers, i.e. insider trading even in the client's account. **Bring more tokens = yes; make our bot buy before your news = no.** Directional buy/sell programs are outside our service (OTC desk; buybacks must be public). Personal line: "I never comment on tokens we work with." No Kosashi/staff trading in client tokens during the engagement + 30 days.
+7. **Enforcement: Operation Token Mirrors (Oct 2024, USA)**: the FBI created its own token (NexFundAI) and caught MMs (Gotbit, ZM Quant, CLS Global, MyTrade) agreeing to wash trade it; 18 people/firms charged; offshore firms reached (Gotbit's founder extradited, pleaded guilty). Lessons: the client may be a sting and calls may be recorded; the MM gets charged; offshore is no shield. It also makes clean MMs more sought after.
+8. **Regulators and licences**: (A) conduct rules apply everywhere, licence or not; (B) licensing differs: US SEC/CFTC/DOJ, EU MiCA, Dubai VARA, India FIU-IND, Singapore MAS, Hong Kong SFC; Kosashi is in Georgia (National Bank of Georgia VASP rules). The usual trigger is custody. Lawyer's opinion = gate before client #1.
+9. **Custody vs trade-only access**: client funds in our wallet (worst: hack, commingling, licensing), withdraw-enabled key (medium), client sub-account + trade-only, withdraw-disabled, IP-locked key (ours). If the client finds sub-accounts a hassle, offer a 15-minute setup call, never custody.
+10. **KYC / KYB**: entity docs, founders' identities (private KYC under NDA if publicly anonymous), sanctions, whitepaper/product, tokenomics + unlocks, source of inventory, listing agreements. Don't sign: refused KYC, past rugs, sanctions hit, unverifiable entity.
+11. **Red flags + rule**: asks for volume / momentum / green candles / defend price / walls; urgent onboarding before an unlock; pay only in own token; send inventory to our wallet; "other MMs do it", "off the record", pressure. **Explain once kindly, walk away if repeated.** Never quote a price for a prohibited service, never joke along, write a call note.
+12. **Governing law, jurisdiction, arbitration**: a court has power only in its own country, so pick a neutral referee in advance (rulebook = governing law, referee = arbitration, result counts = New York Convention, ~170 countries incl. Georgia). Default Singapore law + SIAC; may concede DIFC / London / HK; red line = client's ordinary local courts. Real day-to-day protection = paid monthly in advance + stop quoting if unpaid; arbitration only for large sums.
+
+#### Scenario lessons
+- **Binance-listing request**: prepare depth = fine; hold $0.10 = price support; "build up KSTL" = insider buying (missed at first, the key trap).
+- **Aurora (anonymous, BVI, 50% token pay, "$300k volume", send to our wallet)**: anonymous → private KYC before signing; token pay → cash floor + tokens only as a bonus; volume → explain, walk if repeated; wallet → sub-account help. Hidden clue: "our last MM *kept* volume" = probably wash trading, so warn that reported volume will drop when we take over. BVI alone is not a flag.
+- **Exchange flags self-trades**: causes = STP off (our engine has none yet), flag missed on an order, **client's treasury selling into our bids (same owner both sides)**, timing race. Defence = records (order logs + reason), cause, fix, written policy. New rule (term sheet 7d): client never sells its tokens into our quotes; cash-outs via OTC or stablecoin withdrawal with 48 h notice.
+
+#### Engine / company check (Step 4)
+Exists: engine log + diag JSONL, cancel-reason tags, OTR counters; spot venues block orders above balance. Gaps: legal opinion + KYB (High, gate), audit trail per client (Medium), OTR not limited/alerted (Medium), no self-surveillance (Medium), no resting-size cap vs inventory on perps (Low).
+
+#### Knowledge gaps to revisit
+- Exact licensing position of Kosashi (Georgia) for client books: needs a lawyer.
+- How specific venues implement STP modes and OTR limits (check per venue at onboarding).
 
 ### MMaaS Layer 6 — Pricing and Unit Economics
 *(Pending)*

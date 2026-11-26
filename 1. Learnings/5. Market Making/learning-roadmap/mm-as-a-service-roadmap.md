@@ -82,10 +82,10 @@ quoting starts.
 - [x] KPI monitoring and client reporting
 - [x] Venue coverage (where tokens actually list)
 
-## Layer 5 — Legal, Compliance and Ethics
-- [ ] Legitimate market making vs wash trading / manipulation
-- [ ] Enforcement cases against token market makers
-- [ ] Client screening, contract jurisdiction, red flags
+## Layer 5 — Legal, Compliance and Ethics ✅ Done 2026-11-26
+- [x] Legitimate market making vs wash trading / manipulation
+- [x] Enforcement cases against token market makers
+- [x] Client screening, contract jurisdiction, red flags
 
 ## Layer 6 — Pricing and Unit Economics
 - [ ] Cost to serve one client; capital at risk

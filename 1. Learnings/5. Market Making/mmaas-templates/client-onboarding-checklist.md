@@ -48,6 +48,7 @@ Client: ________  Token: ________  Venues: ________  Go-live date: ________  Own
 ## 7. Client information
 - [ ] **Event calendar** collected: unlocks, launches, listings, big announcements, treasury sales
 - [ ] Event-notice duty confirmed (client tells us in advance); non-public info used only to prepare liquidity
+- [ ] **Treasury-sales rule agreed:** client never sells its tokens into our quotes (self-trade / wash flag risk); cash-outs via OTC or stablecoin withdrawal with 48 h notice
 - [ ] Client contacts for top-ups and emergencies
 
 ## 8. Reporting
